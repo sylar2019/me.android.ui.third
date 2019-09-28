@@ -85,18 +85,18 @@ public interface SubMenu extends Menu {
     /**
      * Change the icon associated with this submenu's item in its parent menu.
      *
-     * @see MenuItem#setIcon(int)
      * @param iconRes The new icon (as a resource ID) to be displayed.
      * @return This SubMenu so additional setters can be called.
+     * @see MenuItem#setIcon(int)
      */
     public SubMenu setIcon(int iconRes);
 
     /**
      * Change the icon associated with this submenu's item in its parent menu.
      *
-     * @see MenuItem#setIcon(Drawable)
      * @param icon The new icon (as a Drawable) to be displayed.
      * @return This SubMenu so additional setters can be called.
+     * @see MenuItem#setIcon(Drawable)
      */
     public SubMenu setIcon(Drawable icon);
 

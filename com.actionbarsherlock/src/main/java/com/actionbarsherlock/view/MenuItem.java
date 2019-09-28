@@ -39,9 +39,13 @@ public interface MenuItem {
     /*
      * These should be kept in sync with attrs.xml enum constants for showAsAction
      */
-    /** Never show this item as a button in an Action Bar. */
+    /**
+     * Never show this item as a button in an Action Bar.
+     */
     public static final int SHOW_AS_ACTION_NEVER = android.view.MenuItem.SHOW_AS_ACTION_NEVER;
-    /** Show this item as a button in an Action Bar if the system decides there is room for it. */
+    /**
+     * Show this item as a button in an Action Bar if the system decides there is room for it.
+     */
     public static final int SHOW_AS_ACTION_IF_ROOM = android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM;
     /**
      * Always show this item as a button in an Action Bar.
@@ -63,54 +67,6 @@ public interface MenuItem {
      * a larger segment of its container.
      */
     public static final int SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW = android.view.MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW;
-
-    /**
-     * Interface definition for a callback to be invoked when a menu item is
-     * clicked.
-     *
-     * @see Activity#onContextItemSelected(MenuItem)
-     * @see Activity#onOptionsItemSelected(MenuItem)
-     */
-    public interface OnMenuItemClickListener {
-        /**
-         * Called when a menu item has been invoked.  This is the first code
-         * that is executed; if it returns true, no other callbacks will be
-         * executed.
-         *
-         * @param item The menu item that was invoked.
-         *
-         * @return Return true to consume this click and prevent others from
-         *         executing.
-         */
-        public boolean onMenuItemClick(MenuItem item);
-    }
-
-    /**
-     * Interface definition for a callback to be invoked when a menu item
-     * marked with {@link MenuItem#SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW} is
-     * expanded or collapsed.
-     *
-     * @see MenuItem#expandActionView()
-     * @see MenuItem#collapseActionView()
-     * @see MenuItem#setShowAsActionFlags(int)
-     */
-    public interface OnActionExpandListener {
-        /**
-         * Called when a menu item with {@link MenuItem#SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW}
-         * is expanded.
-         * @param item Item that was expanded
-         * @return true if the item should expand, false if expansion should be suppressed.
-         */
-        public boolean onMenuItemActionExpand(MenuItem item);
-
-        /**
-         * Called when a menu item with {@link MenuItem#SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW}
-         * is collapsed.
-         * @param item Item that was collapsed
-         * @return true if the item should collapse, false if collapsing should be suppressed.
-         */
-        public boolean onMenuItemActionCollapse(MenuItem item);
-    }
 
     /**
      * Return the identifier for this menu item.  The identifier can not
@@ -145,6 +101,13 @@ public interface MenuItem {
     public int getOrder();
 
     /**
+     * Retrieve the current title of the item.
+     *
+     * @return The title.
+     */
+    public CharSequence getTitle();
+
+    /**
      * Change the title associated with this item.
      *
      * @param title The new text to be displayed.
@@ -167,11 +130,13 @@ public interface MenuItem {
     public MenuItem setTitle(int title);
 
     /**
-     * Retrieve the current title of the item.
+     * Retrieve the current condensed title of the item. If a condensed
+     * title was never set, it will return the normal title.
      *
-     * @return The title.
+     * @return The condensed title, if it exists.
+     * Otherwise the normal title.
      */
-    public CharSequence getTitle();
+    public CharSequence getTitleCondensed();
 
     /**
      * Change the condensed title associated with this item. The condensed
@@ -184,13 +149,12 @@ public interface MenuItem {
     public MenuItem setTitleCondensed(CharSequence title);
 
     /**
-     * Retrieve the current condensed title of the item. If a condensed
-     * title was never set, it will return the normal title.
+     * Returns the icon for this item as a Drawable (getting it from resources if it hasn't been
+     * loaded before).
      *
-     * @return The condensed title, if it exists.
-     *         Otherwise the normal title.
+     * @return The icon as a Drawable.
      */
-    public CharSequence getTitleCondensed();
+    public Drawable getIcon();
 
     /**
      * Change the icon associated with this item. This icon will not always be
@@ -216,12 +180,15 @@ public interface MenuItem {
     public MenuItem setIcon(int iconRes);
 
     /**
-     * Returns the icon for this item as a Drawable (getting it from resources if it hasn't been
-     * loaded before).
+     * Return the Intent associated with this item.  This returns a
+     * reference to the Intent which you can change as desired to modify
+     * what the Item is holding.
      *
-     * @return The icon as a Drawable.
+     * @return Returns the last value supplied to {@link #setIntent}, or
+     * null.
+     * @see #setIntent
      */
-    public Drawable getIcon();
+    public Intent getIntent();
 
     /**
      * Change the Intent associated with this item.  By default there is no
@@ -235,24 +202,13 @@ public interface MenuItem {
      * item.  In this case it is assumed that the Runnable always handles
      * the item, and the intent will never be started.
      *
-     * @see #getIntent
      * @param intent The Intent to associated with the item.  This Intent
      *               object is <em>not</em> copied, so be careful not to
      *               modify it later.
      * @return This Item so additional setters can be called.
+     * @see #getIntent
      */
     public MenuItem setIntent(Intent intent);
-
-    /**
-     * Return the Intent associated with this item.  This returns a
-     * reference to the Intent which you can change as desired to modify
-     * what the Item is holding.
-     *
-     * @see #setIntent
-     * @return Returns the last value supplied to {@link #setIntent}, or
-     *         null.
-     */
-    public Intent getIntent();
 
     /**
      * Change both the numeric and alphabetic shortcut associated with this
@@ -264,23 +220,12 @@ public interface MenuItem {
      * See {@link Menu} for the menu types that support shortcuts.
      *
      * @param numericChar The numeric shortcut key. This is the shortcut when
-     *        using a numeric (e.g., 12-key) keyboard.
-     * @param alphaChar The alphabetic shortcut key. This is the shortcut when
-     *        using a keyboard with alphabetic keys.
+     *                    using a numeric (e.g., 12-key) keyboard.
+     * @param alphaChar   The alphabetic shortcut key. This is the shortcut when
+     *                    using a keyboard with alphabetic keys.
      * @return This Item so additional setters can be called.
      */
     public MenuItem setShortcut(char numericChar, char alphaChar);
-
-    /**
-     * Change the numeric shortcut associated with this item.
-     * <p>
-     * See {@link Menu} for the menu types that support shortcuts.
-     *
-     * @param numericChar The numeric shortcut key.  This is the shortcut when
-     *                 using a 12-key (numeric) keyboard.
-     * @return This Item so additional setters can be called.
-     */
-    public MenuItem setNumericShortcut(char numericChar);
 
     /**
      * Return the char for this menu item's numeric (12-key) shortcut.
@@ -288,6 +233,24 @@ public interface MenuItem {
      * @return Numeric character to use as a shortcut.
      */
     public char getNumericShortcut();
+
+    /**
+     * Change the numeric shortcut associated with this item.
+     * <p>
+     * See {@link Menu} for the menu types that support shortcuts.
+     *
+     * @param numericChar The numeric shortcut key.  This is the shortcut when
+     *                    using a 12-key (numeric) keyboard.
+     * @return This Item so additional setters can be called.
+     */
+    public MenuItem setNumericShortcut(char numericChar);
+
+    /**
+     * Return the char for this menu item's alphabetic shortcut.
+     *
+     * @return Alphabetic character to use as a shortcut.
+     */
+    public char getAlphabeticShortcut();
 
     /**
      * Change the alphabetic shortcut associated with this item. The shortcut
@@ -300,17 +263,18 @@ public interface MenuItem {
      * See {@link Menu} for the menu types that support shortcuts.
      *
      * @param alphaChar The alphabetic shortcut key. This is the shortcut when
-     *        using a keyboard with alphabetic keys.
+     *                  using a keyboard with alphabetic keys.
      * @return This Item so additional setters can be called.
      */
     public MenuItem setAlphabeticShortcut(char alphaChar);
 
     /**
-     * Return the char for this menu item's alphabetic shortcut.
+     * Return whether the item can currently display a check mark.
      *
-     * @return Alphabetic character to use as a shortcut.
+     * @return If a check mark can be displayed, returns true.
+     * @see #setCheckable
      */
-    public char getAlphabeticShortcut();
+    public boolean isCheckable();
 
     /**
      * Control whether this item can display a check mark. Setting this does
@@ -321,22 +285,21 @@ public interface MenuItem {
      * See {@link Menu} for the menu types that support check marks.
      *
      * @param checkable Set to true to allow a check mark, false to
-     *            disallow. The default is false.
+     *                  disallow. The default is false.
+     * @return This Item so additional setters can be called.
      * @see #setChecked
      * @see #isCheckable
      * @see Menu#setGroupCheckable
-     * @return This Item so additional setters can be called.
      */
     public MenuItem setCheckable(boolean checkable);
 
     /**
-     * Return whether the item can currently display a check mark.
+     * Return whether the item is currently displaying a check mark.
      *
-     * @return If a check mark can be displayed, returns true.
-     *
-     * @see #setCheckable
+     * @return If a check mark is displayed, returns true.
+     * @see #setChecked
      */
-    public boolean isCheckable();
+    public boolean isChecked();
 
     /**
      * Control whether this item is shown with a check mark.  Note that you
@@ -347,34 +310,14 @@ public interface MenuItem {
      * <p>
      * See {@link Menu} for the menu types that support check marks.
      *
-     * @see #setCheckable
-     * @see #isChecked
-     * @see Menu#setGroupCheckable
      * @param checked Set to true to display a check mark, false to hide
      *                it.  The default value is false.
      * @return This Item so additional setters can be called.
+     * @see #setCheckable
+     * @see #isChecked
+     * @see Menu#setGroupCheckable
      */
     public MenuItem setChecked(boolean checked);
-
-    /**
-     * Return whether the item is currently displaying a check mark.
-     *
-     * @return If a check mark is displayed, returns true.
-     *
-     * @see #setChecked
-     */
-    public boolean isChecked();
-
-    /**
-     * Sets the visibility of the menu item. Even if a menu item is not visible,
-     * it may still be invoked via its shortcut (to completely disable an item,
-     * set it to invisible and {@link #setEnabled(boolean) disabled}).
-     *
-     * @param visible If true then the item will be visible; if false it is
-     *        hidden.
-     * @return This Item so additional setters can be called.
-     */
-    public MenuItem setVisible(boolean visible);
 
     /**
      * Return the visibility of the menu item.
@@ -384,15 +327,15 @@ public interface MenuItem {
     public boolean isVisible();
 
     /**
-     * Sets whether the menu item is enabled. Disabling a menu item will not
-     * allow it to be invoked via its shortcut. The menu item will still be
-     * visible.
+     * Sets the visibility of the menu item. Even if a menu item is not visible,
+     * it may still be invoked via its shortcut (to completely disable an item,
+     * set it to invisible and {@link #setEnabled(boolean) disabled}).
      *
-     * @param enabled If true then the item will be invokable; if false it is
-     *        won't be invokable.
+     * @param visible If true then the item will be visible; if false it is
+     *                hidden.
      * @return This Item so additional setters can be called.
      */
-    public MenuItem setEnabled(boolean enabled);
+    public MenuItem setVisible(boolean visible);
 
     /**
      * Return the enabled state of the menu item.
@@ -402,11 +345,22 @@ public interface MenuItem {
     public boolean isEnabled();
 
     /**
+     * Sets whether the menu item is enabled. Disabling a menu item will not
+     * allow it to be invoked via its shortcut. The menu item will still be
+     * visible.
+     *
+     * @param enabled If true then the item will be invokable; if false it is
+     *                won't be invokable.
+     * @return This Item so additional setters can be called.
+     */
+    public MenuItem setEnabled(boolean enabled);
+
+    /**
      * Check whether this item has an associated sub-menu.  I.e. it is a
      * sub-menu of another menu.
      *
      * @return If true this item has a menu; else it is a
-     *         normal item.
+     * normal item.
      */
     public boolean hasSubMenu();
 
@@ -436,9 +390,9 @@ public interface MenuItem {
      * information is set by the View that added this menu item to the
      * menu.
      *
-     * @see OnCreateContextMenuListener
      * @return The extra information linked to the View that added this
-     *         menu item to the menu. This can be null.
+     * menu item to the menu. This can be null.
+     * @see OnCreateContextMenuListener
      */
     public ContextMenuInfo getMenuInfo();
 
@@ -451,9 +405,8 @@ public interface MenuItem {
      * it should be shown with a text label.
      *
      * @param actionEnum How the item should display. One of
-     * {@link #SHOW_AS_ACTION_ALWAYS}, {@link #SHOW_AS_ACTION_IF_ROOM}, or
-     * {@link #SHOW_AS_ACTION_NEVER}. SHOW_AS_ACTION_NEVER is the default.
-     *
+     *                   {@link #SHOW_AS_ACTION_ALWAYS}, {@link #SHOW_AS_ACTION_IF_ROOM}, or
+     *                   {@link #SHOW_AS_ACTION_NEVER}. SHOW_AS_ACTION_NEVER is the default.
      * @see android.app.ActionBar
      * @see #setActionView(View)
      */
@@ -471,27 +424,34 @@ public interface MenuItem {
      * returns the current MenuItem instance for call chaining.
      *
      * @param actionEnum How the item should display. One of
-     * {@link #SHOW_AS_ACTION_ALWAYS}, {@link #SHOW_AS_ACTION_IF_ROOM}, or
-     * {@link #SHOW_AS_ACTION_NEVER}. SHOW_AS_ACTION_NEVER is the default.
-     *
+     *                   {@link #SHOW_AS_ACTION_ALWAYS}, {@link #SHOW_AS_ACTION_IF_ROOM}, or
+     *                   {@link #SHOW_AS_ACTION_NEVER}. SHOW_AS_ACTION_NEVER is the default.
+     * @return This MenuItem instance for call chaining.
      * @see android.app.ActionBar
      * @see #setActionView(View)
-     * @return This MenuItem instance for call chaining.
      */
     public MenuItem setShowAsActionFlags(int actionEnum);
+
+    /**
+     * Returns the currently set action view for this menu item.
+     *
+     * @return This item's action view
+     * @see #setActionView(View)
+     * @see #setShowAsAction(int)
+     */
+    public View getActionView();
 
     /**
      * Set an action view for this menu item. An action view will be displayed in place
      * of an automatically generated menu item element in the UI when this item is shown
      * as an action within a parent.
      * <p>
-     *   <strong>Note:</strong> Setting an action view overrides the action provider
-     *           set via {@link #setActionProvider(ActionProvider)}.
+     * <strong>Note:</strong> Setting an action view overrides the action provider
+     * set via {@link #setActionProvider(ActionProvider)}.
      * </p>
      *
      * @param view View to use for presenting this item to the user.
      * @return This Item so additional setters can be called.
-     *
      * @see #setShowAsAction(int)
      */
     public MenuItem setActionView(View view);
@@ -501,52 +461,39 @@ public interface MenuItem {
      * of an automatically generated menu item element in the UI when this item is shown
      * as an action within a parent.
      * <p>
-     *   <strong>Note:</strong> Setting an action view overrides the action provider
-     *           set via {@link #setActionProvider(ActionProvider)}.
+     * <strong>Note:</strong> Setting an action view overrides the action provider
+     * set via {@link #setActionProvider(ActionProvider)}.
      * </p>
      *
      * @param resId Layout resource to use for presenting this item to the user.
      * @return This Item so additional setters can be called.
-     *
      * @see #setShowAsAction(int)
      */
     public MenuItem setActionView(int resId);
 
     /**
-     * Returns the currently set action view for this menu item.
+     * Gets the {@link ActionProvider}.
      *
-     * @return This item's action view
-     *
-     * @see #setActionView(View)
-     * @see #setShowAsAction(int)
+     * @return The action provider.
+     * @see ActionProvider
+     * @see #setActionProvider(ActionProvider)
      */
-    public View getActionView();
+    public ActionProvider getActionProvider();
 
     /**
      * Sets the {@link ActionProvider} responsible for creating an action view if
      * the item is placed on the action bar. The provider also provides a default
      * action invoked if the item is placed in the overflow menu.
      * <p>
-     *   <strong>Note:</strong> Setting an action provider overrides the action view
-     *           set via {@link #setActionView(int)} or {@link #setActionView(View)}.
+     * <strong>Note:</strong> Setting an action provider overrides the action view
+     * set via {@link #setActionView(int)} or {@link #setActionView(View)}.
      * </p>
      *
      * @param actionProvider The action provider.
      * @return This Item so additional setters can be called.
-     *
      * @see ActionProvider
      */
     public MenuItem setActionProvider(ActionProvider actionProvider);
-
-    /**
-     * Gets the {@link ActionProvider}.
-     *
-     * @return The action provider.
-     *
-     * @see ActionProvider
-     * @see #setActionProvider(ActionProvider)
-     */
-    public ActionProvider getActionProvider();
 
     /**
      * Expand the action view associated with this menu item.
@@ -577,7 +524,6 @@ public interface MenuItem {
      * Returns true if this menu item's action view has been expanded.
      *
      * @return true if the item's action view is expanded, false otherwise.
-     *
      * @see #expandActionView()
      * @see #collapseActionView()
      * @see #SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW
@@ -595,4 +541,53 @@ public interface MenuItem {
      * @return This menu item instance for call chaining
      */
     public MenuItem setOnActionExpandListener(OnActionExpandListener listener);
+
+    /**
+     * Interface definition for a callback to be invoked when a menu item is
+     * clicked.
+     *
+     * @see Activity#onContextItemSelected(MenuItem)
+     * @see Activity#onOptionsItemSelected(MenuItem)
+     */
+    public interface OnMenuItemClickListener {
+        /**
+         * Called when a menu item has been invoked.  This is the first code
+         * that is executed; if it returns true, no other callbacks will be
+         * executed.
+         *
+         * @param item The menu item that was invoked.
+         * @return Return true to consume this click and prevent others from
+         * executing.
+         */
+        public boolean onMenuItemClick(MenuItem item);
+    }
+
+    /**
+     * Interface definition for a callback to be invoked when a menu item
+     * marked with {@link MenuItem#SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW} is
+     * expanded or collapsed.
+     *
+     * @see MenuItem#expandActionView()
+     * @see MenuItem#collapseActionView()
+     * @see MenuItem#setShowAsActionFlags(int)
+     */
+    public interface OnActionExpandListener {
+        /**
+         * Called when a menu item with {@link MenuItem#SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW}
+         * is expanded.
+         *
+         * @param item Item that was expanded
+         * @return true if the item should expand, false if expansion should be suppressed.
+         */
+        public boolean onMenuItemActionExpand(MenuItem item);
+
+        /**
+         * Called when a menu item with {@link MenuItem#SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW}
+         * is collapsed.
+         *
+         * @param item Item that was collapsed
+         * @return true if the item should collapse, false if collapsing should be suppressed.
+         */
+        public boolean onMenuItemActionCollapse(MenuItem item);
+    }
 }

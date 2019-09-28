@@ -16,7 +16,6 @@
 
 package com.actionbarsherlock.internal.view.menu;
 
-import java.util.ArrayList;
 import android.content.Context;
 import android.content.res.Resources;
 import android.database.DataSetObserver;
@@ -32,14 +31,18 @@ import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
 import android.widget.ListAdapter;
 import android.widget.PopupWindow;
+
 import com.actionbarsherlock.R;
 import com.actionbarsherlock.internal.view.View_HasStateListenerSupport;
 import com.actionbarsherlock.internal.view.View_OnAttachStateChangeListener;
 import com.actionbarsherlock.internal.widget.IcsListPopupWindow;
 import com.actionbarsherlock.view.MenuItem;
 
+import java.util.ArrayList;
+
 /**
  * Presents a menu as a small, simple popup anchored to another view.
+ *
  * @hide
  */
 public class MenuPopupHelper implements AdapterView.OnItemClickListener, View.OnKeyListener,
@@ -48,7 +51,7 @@ public class MenuPopupHelper implements AdapterView.OnItemClickListener, View.On
     //UNUSED private static final String TAG = "MenuPopupHelper";
 
     static final int ITEM_LAYOUT = R.layout.abs__popup_menu_item_layout;
-
+    boolean mForceShowIcon;
     private Context mContext;
     private LayoutInflater mInflater;
     private IcsListPopupWindow mPopup;
@@ -57,13 +60,8 @@ public class MenuPopupHelper implements AdapterView.OnItemClickListener, View.On
     private View mAnchorView;
     private boolean mOverflowOnly;
     private ViewTreeObserver mTreeObserver;
-
     private MenuAdapter mAdapter;
-
     private Callback mPresenterCallback;
-
-    boolean mForceShowIcon;
-
     private ViewGroup mMeasureParent;
 
     public MenuPopupHelper(Context context, MenuBuilder menu) {
@@ -75,7 +73,7 @@ public class MenuPopupHelper implements AdapterView.OnItemClickListener, View.On
     }
 
     public MenuPopupHelper(Context context, MenuBuilder menu,
-            View anchorView, boolean overflowOnly) {
+                           View anchorView, boolean overflowOnly) {
         mContext = context;
         mInflater = LayoutInflater.from(context);
         mMenu = menu;
@@ -182,9 +180,9 @@ public class MenuPopupHelper implements AdapterView.OnItemClickListener, View.On
         View itemView = null;
         int itemType = 0;
         final int widthMeasureSpec =
-            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+                MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
         final int heightMeasureSpec =
-            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+                MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
         final int count = adapter.getCount();
         for (int i = 0; i < count; i++) {
             final int positionType = adapter.getItemViewType(i);

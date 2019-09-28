@@ -35,21 +35,17 @@ import com.actionbarsherlock.internal.view.menu.ActionMenuView;
 import static com.actionbarsherlock.internal.ResourcesCompat.getResources_getBoolean;
 
 public abstract class AbsActionBarView extends NineViewGroup {
+    private static final /*Time*/ Interpolator sAlphaInterpolator = new DecelerateInterpolator();
+    private static final int FADE_DURATION = 200;
+    protected final VisibilityAnimListener mVisAnimListener = new VisibilityAnimListener();
+    final Context mContext;
     protected ActionMenuView mMenuView;
     protected ActionMenuPresenter mActionMenuPresenter;
     protected ActionBarContainer mSplitView;
     protected boolean mSplitActionBar;
     protected boolean mSplitWhenNarrow;
     protected int mContentHeight;
-
-    final Context mContext;
-
     protected Animator mVisibilityAnim;
-    protected final VisibilityAnimListener mVisAnimListener = new VisibilityAnimListener();
-
-    private static final /*Time*/Interpolator sAlphaInterpolator = new DecelerateInterpolator();
-
-    private static final int FADE_DURATION = 200;
 
     public AbsActionBarView(Context context) {
         super(context);
@@ -94,6 +90,7 @@ public abstract class AbsActionBarView extends NineViewGroup {
 
     /**
      * Sets whether the bar should be split right now, no questions asked.
+     *
      * @param split true if the bar should split
      */
     public void setSplitActionBar(boolean split) {
@@ -102,19 +99,20 @@ public abstract class AbsActionBarView extends NineViewGroup {
 
     /**
      * Sets whether the bar should split if we enter a narrow screen configuration.
+     *
      * @param splitWhenNarrow true if the bar should check to split after a config change
      */
     public void setSplitWhenNarrow(boolean splitWhenNarrow) {
         mSplitWhenNarrow = splitWhenNarrow;
     }
 
+    public int getContentHeight() {
+        return mContentHeight;
+    }
+
     public void setContentHeight(int height) {
         mContentHeight = height;
         requestLayout();
-    }
-
-    public int getContentHeight() {
-        return mContentHeight;
     }
 
     public void setSplitView(ActionBarContainer splitView) {
@@ -222,7 +220,7 @@ public abstract class AbsActionBarView extends NineViewGroup {
     }
 
     protected int measureChildView(View child, int availableWidth, int childSpecHeight,
-            int spacing) {
+                                   int spacing) {
         child.measure(MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST),
                 childSpecHeight);
 
@@ -253,8 +251,8 @@ public abstract class AbsActionBarView extends NineViewGroup {
     }
 
     protected class VisibilityAnimListener implements Animator.AnimatorListener {
-        private boolean mCanceled = false;
         int mFinalVisibility;
+        private boolean mCanceled = false;
 
         public VisibilityAnimListener withFinalVisibility(int visibility) {
             mFinalVisibility = visibility;

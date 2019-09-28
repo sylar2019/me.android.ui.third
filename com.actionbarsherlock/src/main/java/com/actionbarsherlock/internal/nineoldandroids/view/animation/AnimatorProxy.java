@@ -15,6 +15,21 @@ public final class AnimatorProxy extends Animation {
 
     private static final WeakHashMap<View, AnimatorProxy> PROXIES =
             new WeakHashMap<View, AnimatorProxy>();
+    private final WeakReference<View> mView;
+    private final RectF mBefore = new RectF();
+    private final RectF mAfter = new RectF();
+    private final Matrix mTempMatrix = new Matrix();
+    private float mAlpha = 1;
+    private float mScaleX = 1;
+    private float mScaleY = 1;
+    private float mTranslationX;
+    private float mTranslationY;
+    private AnimatorProxy(View view) {
+        setDuration(0); //perform transformation immediately
+        setFillAfter(true); //persist transformation beyond duration
+        view.setAnimation(this);
+        mView = new WeakReference<View>(view);
+    }
 
     public static AnimatorProxy wrap(View view) {
         AnimatorProxy proxy = PROXIES.get(view);
@@ -25,28 +40,10 @@ public final class AnimatorProxy extends Animation {
         return proxy;
     }
 
-    private final WeakReference<View> mView;
-
-    private float mAlpha = 1;
-    private float mScaleX = 1;
-    private float mScaleY = 1;
-    private float mTranslationX;
-    private float mTranslationY;
-
-    private final RectF mBefore = new RectF();
-    private final RectF mAfter = new RectF();
-    private final Matrix mTempMatrix = new Matrix();
-
-    private AnimatorProxy(View view) {
-        setDuration(0); //perform transformation immediately
-        setFillAfter(true); //persist transformation beyond duration
-        view.setAnimation(this);
-        mView = new WeakReference<View>(view);
-    }
-
     public float getAlpha() {
         return mAlpha;
     }
+
     public void setAlpha(float alpha) {
         if (mAlpha != alpha) {
             mAlpha = alpha;
@@ -56,9 +53,11 @@ public final class AnimatorProxy extends Animation {
             }
         }
     }
+
     public float getScaleX() {
         return mScaleX;
     }
+
     public void setScaleX(float scaleX) {
         if (mScaleX != scaleX) {
             prepareForUpdate();
@@ -66,9 +65,11 @@ public final class AnimatorProxy extends Animation {
             invalidateAfterUpdate();
         }
     }
+
     public float getScaleY() {
         return mScaleY;
     }
+
     public void setScaleY(float scaleY) {
         if (mScaleY != scaleY) {
             prepareForUpdate();
@@ -76,6 +77,7 @@ public final class AnimatorProxy extends Animation {
             invalidateAfterUpdate();
         }
     }
+
     public int getScrollX() {
         View view = mView.get();
         if (view == null) {
@@ -83,12 +85,14 @@ public final class AnimatorProxy extends Animation {
         }
         return view.getScrollX();
     }
+
     public void setScrollX(int value) {
         View view = mView.get();
         if (view != null) {
             view.scrollTo(value, view.getScrollY());
         }
     }
+
     public int getScrollY() {
         View view = mView.get();
         if (view == null) {
@@ -96,6 +100,7 @@ public final class AnimatorProxy extends Animation {
         }
         return view.getScrollY();
     }
+
     public void setScrollY(int value) {
         View view = mView.get();
         if (view != null) {
@@ -106,6 +111,7 @@ public final class AnimatorProxy extends Animation {
     public float getTranslationX() {
         return mTranslationX;
     }
+
     public void setTranslationX(float translationX) {
         if (mTranslationX != translationX) {
             prepareForUpdate();
@@ -113,9 +119,11 @@ public final class AnimatorProxy extends Animation {
             invalidateAfterUpdate();
         }
     }
+
     public float getTranslationY() {
         return mTranslationY;
     }
+
     public void setTranslationY(float translationY) {
         if (mTranslationY != translationY) {
             prepareForUpdate();
@@ -130,12 +138,13 @@ public final class AnimatorProxy extends Animation {
             computeRect(mBefore, view);
         }
     }
+
     private void invalidateAfterUpdate() {
         View view = mView.get();
         if (view == null) {
             return;
         }
-        View parent = (View)view.getParent();
+        View parent = (View) view.getParent();
         if (parent == null) {
             return;
         }

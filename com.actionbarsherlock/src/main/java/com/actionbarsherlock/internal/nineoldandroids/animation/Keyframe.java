@@ -47,19 +47,17 @@ public abstract class Keyframe implements Cloneable {
      * based on the type of the <code>value</code> object passed into the constructor.
      */
     Class mValueType;
-
-    /**
-     * The optional time interpolator for the interval preceding this keyframe. A null interpolator
-     * (the default) results in linear interpolation over the interval.
-     */
-    private /*Time*/Interpolator mInterpolator = null;
-
     /**
      * Flag to indicate whether this keyframe has a valid value. This flag is used when an
      * animation first starts, to populate placeholder keyframes with real values derived
      * from the target object.
      */
     boolean mHasValue = false;
+    /**
+     * The optional time interpolator for the interval preceding this keyframe. A null interpolator
+     * (the default) results in linear interpolation over the interval.
+     */
+    private /*Time*/ Interpolator mInterpolator = null;
 
     /**
      * Constructs a Keyframe object with the given time and value. The time defines the
@@ -68,10 +66,10 @@ public abstract class Keyframe implements Cloneable {
      * an interpolation between the values at those keyframes.
      *
      * @param fraction The time, expressed as a value between 0 and 1, representing the fraction
-     * of time elapsed of the overall animation duration.
-     * @param value The value that the object will animate to as the animation time approaches
-     * the time in this keyframe, and the the value animated from as the time passes the time in
-     * this keyframe.
+     *                 of time elapsed of the overall animation duration.
+     * @param value    The value that the object will animate to as the animation time approaches
+     *                 the time in this keyframe, and the the value animated from as the time passes the time in
+     *                 this keyframe.
      */
     public static Keyframe ofInt(float fraction, int value) {
         return new IntKeyframe(fraction, value);
@@ -87,7 +85,7 @@ public abstract class Keyframe implements Cloneable {
      * an interpolation between the values at those keyframes.
      *
      * @param fraction The time, expressed as a value between 0 and 1, representing the fraction
-     * of time elapsed of the overall animation duration.
+     *                 of time elapsed of the overall animation duration.
      */
     public static Keyframe ofInt(float fraction) {
         return new IntKeyframe(fraction);
@@ -100,10 +98,10 @@ public abstract class Keyframe implements Cloneable {
      * an interpolation between the values at those keyframes.
      *
      * @param fraction The time, expressed as a value between 0 and 1, representing the fraction
-     * of time elapsed of the overall animation duration.
-     * @param value The value that the object will animate to as the animation time approaches
-     * the time in this keyframe, and the the value animated from as the time passes the time in
-     * this keyframe.
+     *                 of time elapsed of the overall animation duration.
+     * @param value    The value that the object will animate to as the animation time approaches
+     *                 the time in this keyframe, and the the value animated from as the time passes the time in
+     *                 this keyframe.
      */
     public static Keyframe ofFloat(float fraction, float value) {
         return new FloatKeyframe(fraction, value);
@@ -119,7 +117,7 @@ public abstract class Keyframe implements Cloneable {
      * an interpolation between the values at those keyframes.
      *
      * @param fraction The time, expressed as a value between 0 and 1, representing the fraction
-     * of time elapsed of the overall animation duration.
+     *                 of time elapsed of the overall animation duration.
      */
     public static Keyframe ofFloat(float fraction) {
         return new FloatKeyframe(fraction);
@@ -132,10 +130,10 @@ public abstract class Keyframe implements Cloneable {
      * an interpolation between the values at those keyframes.
      *
      * @param fraction The time, expressed as a value between 0 and 1, representing the fraction
-     * of time elapsed of the overall animation duration.
-     * @param value The value that the object will animate to as the animation time approaches
-     * the time in this keyframe, and the the value animated from as the time passes the time in
-     * this keyframe.
+     *                 of time elapsed of the overall animation duration.
+     * @param value    The value that the object will animate to as the animation time approaches
+     *                 the time in this keyframe, and the the value animated from as the time passes the time in
+     *                 this keyframe.
      */
     public static Keyframe ofObject(float fraction, Object value) {
         return new ObjectKeyframe(fraction, value);
@@ -151,7 +149,7 @@ public abstract class Keyframe implements Cloneable {
      * an interpolation between the values at those keyframes.
      *
      * @param fraction The time, expressed as a value between 0 and 1, representing the fraction
-     * of time elapsed of the overall animation duration.
+     *                 of time elapsed of the overall animation duration.
      */
     public static Keyframe ofObject(float fraction) {
         return new ObjectKeyframe(fraction, null);
@@ -196,7 +194,7 @@ public abstract class Keyframe implements Cloneable {
      * Sets the time for this keyframe, as a fraction of the overall animation duration.
      *
      * @param fraction time associated with this keyframe, as a fraction of the overall animation
-     * duration. This should be a value between 0 and 1.
+     *                 duration. This should be a value between 0 and 1.
      */
     public void setFraction(float fraction) {
         mFraction = fraction;
@@ -302,7 +300,7 @@ public abstract class Keyframe implements Cloneable {
 
         public void setValue(Object value) {
             if (value != null && value.getClass() == Integer.class) {
-                mValue = ((Integer)value).intValue();
+                mValue = ((Integer) value).intValue();
                 mHasValue = true;
             }
         }
@@ -346,7 +344,7 @@ public abstract class Keyframe implements Cloneable {
 
         public void setValue(Object value) {
             if (value != null && value.getClass() == Float.class) {
-                mValue = ((Float)value).floatValue();
+                mValue = ((Float) value).floatValue();
                 mHasValue = true;
             }
         }

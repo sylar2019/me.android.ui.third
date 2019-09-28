@@ -1,9 +1,5 @@
 package cn.swu.swipemenulistview;
 
-import java.util.List;
-
-import cn.swu.pulltorefreshswipemenulistview.PullToRefreshSwipeMenuListView;
-
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
@@ -12,6 +8,10 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.List;
+
+import cn.swu.pulltorefreshswipemenulistview.PullToRefreshSwipeMenuListView;
+
 public class SwipeMenuView extends LinearLayout implements OnClickListener {
 
     private PullToRefreshSwipeMenuListView mListView;
@@ -19,14 +19,6 @@ public class SwipeMenuView extends LinearLayout implements OnClickListener {
     private SwipeMenu mMenu;
     private OnSwipeItemClickListener onItemClickListener;
     private int position;
-
-    public int getPosition() {
-        return position;
-    }
-
-    public void setPosition(int position) {
-        this.position = position;
-    }
 
     public SwipeMenuView(SwipeMenu menu, PullToRefreshSwipeMenuListView listView) {
         super(menu.getContext());
@@ -37,6 +29,14 @@ public class SwipeMenuView extends LinearLayout implements OnClickListener {
         for (SwipeMenuItem item : items) {
             addItem(item, id++);
         }
+    }
+
+    public int getPosition() {
+        return position;
+    }
+
+    public void setPosition(int position) {
+        this.position = position;
     }
 
     private void addItem(SwipeMenuItem item, int id) {

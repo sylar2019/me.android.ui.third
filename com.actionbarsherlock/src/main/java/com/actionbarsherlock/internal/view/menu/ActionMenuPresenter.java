@@ -16,10 +16,6 @@
 
 package com.actionbarsherlock.internal.view.menu;
 
-import static com.actionbarsherlock.internal.ResourcesCompat.getResources_getInteger;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -33,12 +29,19 @@ import android.view.View.MeasureSpec;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+
 import com.actionbarsherlock.R;
 import com.actionbarsherlock.internal.view.View_HasStateListenerSupport;
 import com.actionbarsherlock.internal.view.View_OnAttachStateChangeListener;
 import com.actionbarsherlock.internal.view.menu.ActionMenuView.ActionMenuChildView;
 import com.actionbarsherlock.view.ActionProvider;
 import com.actionbarsherlock.view.MenuItem;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+
+import static com.actionbarsherlock.internal.ResourcesCompat.getResources_getInteger;
 
 /**
  * MenuPresenter for building action menus as seen in the action bar and action modes.
@@ -47,6 +50,10 @@ public class ActionMenuPresenter extends BaseMenuPresenter
         implements ActionProvider.SubUiVisibilityListener {
     //UNUSED private static final String TAG = "ActionMenuPresenter";
 
+    final PopupPresenterCallback mPopupPresenterCallback = new PopupPresenterCallback();
+    // Group IDs that have been added as actions - used temporarily, allocated here for reuse.
+    private final SparseBooleanArray mActionButtonGroups = new SparseBooleanArray();
+    int mOpenSubMenuId;
     private View mOverflowButton;
     private boolean mReserveOverflow;
     private boolean mReserveOverflowSet;
@@ -57,25 +64,23 @@ public class ActionMenuPresenter extends BaseMenuPresenter
     private boolean mStrictWidthLimit;
     private boolean mWidthLimitSet;
     private boolean mExpandedActionViewsExclusive;
-
     private int mMinCellSize;
-
-    // Group IDs that have been added as actions - used temporarily, allocated here for reuse.
-    private final SparseBooleanArray mActionButtonGroups = new SparseBooleanArray();
-
     private View mScrapActionButtonView;
-
     private OverflowPopup mOverflowPopup;
     private ActionButtonSubmenu mActionButtonPopup;
-
     private OpenOverflowRunnable mPostedOpenRunnable;
-
-    final PopupPresenterCallback mPopupPresenterCallback = new PopupPresenterCallback();
-    int mOpenSubMenuId;
 
     public ActionMenuPresenter(Context context) {
         super(context, R.layout.abs__action_menu_layout,
                 R.layout.abs__action_menu_item_layout);
+    }
+
+    public static boolean reserveOverflow(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            return (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB);
+        } else {
+            return !HasPermanentMenuKey.get(context);
+        }
     }
 
     @Override
@@ -115,20 +120,6 @@ public class ActionMenuPresenter extends BaseMenuPresenter
 
         // Drop a scrap view as it may no longer reflect the proper context/config.
         mScrapActionButtonView = null;
-    }
-
-    public static boolean reserveOverflow(Context context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            return (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB);
-        } else {
-            return !HasPermanentMenuKey.get(context);
-        }
-    }
-
-    private static class HasPermanentMenuKey {
-        public static boolean get(Context context) {
-            return ViewConfiguration.get(context).hasPermanentMenuKey();
-        }
     }
 
     public void onConfigurationChanged(Configuration newConfig) {
@@ -292,6 +283,7 @@ public class ActionMenuPresenter extends BaseMenuPresenter
 
     /**
      * Display the overflow menu if one is present.
+     *
      * @return true if the overflow menu was shown, false otherwise.
      */
     public boolean showOverflowMenu() {
@@ -333,6 +325,7 @@ public class ActionMenuPresenter extends BaseMenuPresenter
 
     /**
      * Dismiss all popup menus - overflow and submenus.
+     *
      * @return true if popups were dismissed, false otherwise. (This can be because none were open.)
      */
     public boolean dismissPopupMenus() {
@@ -534,7 +527,24 @@ public class ActionMenuPresenter extends BaseMenuPresenter
         }
     }
 
+    private static class HasPermanentMenuKey {
+        public static boolean get(Context context) {
+            return ViewConfiguration.get(context).hasPermanentMenuKey();
+        }
+    }
+
     private static class SavedState implements Parcelable {
+        @SuppressWarnings("unused")
+        public static final Parcelable.Creator<SavedState> CREATOR
+                = new Parcelable.Creator<SavedState>() {
+            public SavedState createFromParcel(Parcel in) {
+                return new SavedState(in);
+            }
+
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+        };
         public int openSubMenuId;
 
         SavedState() {
@@ -553,18 +563,6 @@ public class ActionMenuPresenter extends BaseMenuPresenter
         public void writeToParcel(Parcel dest, int flags) {
             dest.writeInt(openSubMenuId);
         }
-
-        @SuppressWarnings("unused")
-        public static final Parcelable.Creator<SavedState> CREATOR
-                = new Parcelable.Creator<SavedState>() {
-            public SavedState createFromParcel(Parcel in) {
-                return new SavedState(in);
-            }
-
-            public SavedState[] newArray(int size) {
-                return new SavedState[size];
-            }
-        };
     }
 
     private class OverflowMenuButton extends ImageButton implements ActionMenuChildView, View_HasStateListenerSupport {
@@ -629,7 +627,7 @@ public class ActionMenuPresenter extends BaseMenuPresenter
 
     private class OverflowPopup extends MenuPopupHelper {
         public OverflowPopup(Context context, MenuBuilder menu, View anchorView,
-                boolean overflowOnly) {
+                             boolean overflowOnly) {
             super(context, menu, anchorView, overflowOnly);
             setCallback(mPopupPresenterCallback);
         }

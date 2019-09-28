@@ -1,8 +1,5 @@
 package com.actionbarsherlock.internal.app;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
@@ -12,6 +9,9 @@ import android.view.View;
 import android.widget.SpinnerAdapter;
 
 import com.actionbarsherlock.app.ActionBar;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class ActionBarWrapper extends ActionBar implements android.app.ActionBar.OnNavigationListener, android.app.ActionBar.OnMenuVisibilityListener {
     private final Activity mActivity;
@@ -45,11 +45,6 @@ public class ActionBarWrapper extends ActionBar implements android.app.ActionBar
     }
 
     @Override
-    public void setCustomView(View view) {
-        mActionBar.setCustomView(view);
-    }
-
-    @Override
     public void setCustomView(View view, LayoutParams layoutParams) {
         android.app.ActionBar.LayoutParams lp = new android.app.ActionBar.LayoutParams(layoutParams);
         lp.gravity = layoutParams.gravity;
@@ -58,11 +53,6 @@ public class ActionBarWrapper extends ActionBar implements android.app.ActionBar
         lp.leftMargin = layoutParams.leftMargin;
         lp.rightMargin = layoutParams.rightMargin;
         mActionBar.setCustomView(view, lp);
-    }
-
-    @Override
-    public void setCustomView(int resId) {
-        mActionBar.setCustomView(resId);
     }
 
     @Override
@@ -111,34 +101,6 @@ public class ActionBarWrapper extends ActionBar implements android.app.ActionBar
     @Override
     public int getNavigationItemCount() {
         return mActionBar.getNavigationItemCount();
-    }
-
-    @Override
-    public void setTitle(CharSequence title) {
-        mActionBar.setTitle(title);
-    }
-
-    @Override
-    public void setTitle(int resId) {
-        mActionBar.setTitle(resId);
-    }
-
-    @Override
-    public void setSubtitle(CharSequence subtitle) {
-        mActionBar.setSubtitle(subtitle);
-    }
-
-    @Override
-    public void setSubtitle(int resId) {
-        mActionBar.setSubtitle(resId);
-    }
-
-    @Override
-    public void setDisplayOptions(int options) {
-        mActionBar.setDisplayOptions(options);
-
-        // Fixes issue #746
-        mActionBar.setHomeButtonEnabled((options & DISPLAY_HOME_AS_UP) != 0);
     }
 
     @Override
@@ -197,13 +159,43 @@ public class ActionBarWrapper extends ActionBar implements android.app.ActionBar
     }
 
     @Override
+    public void setCustomView(View view) {
+        mActionBar.setCustomView(view);
+    }
+
+    @Override
+    public void setCustomView(int resId) {
+        mActionBar.setCustomView(resId);
+    }
+
+    @Override
     public CharSequence getTitle() {
         return mActionBar.getTitle();
     }
 
     @Override
+    public void setTitle(CharSequence title) {
+        mActionBar.setTitle(title);
+    }
+
+    @Override
+    public void setTitle(int resId) {
+        mActionBar.setTitle(resId);
+    }
+
+    @Override
     public CharSequence getSubtitle() {
         return mActionBar.getSubtitle();
+    }
+
+    @Override
+    public void setSubtitle(CharSequence subtitle) {
+        mActionBar.setSubtitle(subtitle);
+    }
+
+    @Override
+    public void setSubtitle(int resId) {
+        mActionBar.setSubtitle(resId);
     }
 
     @Override
@@ -219,6 +211,113 @@ public class ActionBarWrapper extends ActionBar implements android.app.ActionBar
     @Override
     public int getDisplayOptions() {
         return mActionBar.getDisplayOptions();
+    }
+
+    @Override
+    public void setDisplayOptions(int options) {
+        mActionBar.setDisplayOptions(options);
+
+        // Fixes issue #746
+        mActionBar.setHomeButtonEnabled((options & DISPLAY_HOME_AS_UP) != 0);
+    }
+
+    @Override
+    public Tab newTab() {
+        return new TabWrapper(mActionBar.newTab());
+    }
+
+    @Override
+    public void addTab(Tab tab) {
+        mActionBar.addTab(((TabWrapper) tab).mNativeTab);
+    }
+
+    @Override
+    public void addTab(Tab tab, boolean setSelected) {
+        mActionBar.addTab(((TabWrapper) tab).mNativeTab, setSelected);
+    }
+
+    @Override
+    public void addTab(Tab tab, int position) {
+        mActionBar.addTab(((TabWrapper) tab).mNativeTab, position);
+    }
+
+    @Override
+    public void addTab(Tab tab, int position, boolean setSelected) {
+        mActionBar.addTab(((TabWrapper) tab).mNativeTab, position, setSelected);
+    }
+
+    @Override
+    public void removeTab(Tab tab) {
+        mActionBar.removeTab(((TabWrapper) tab).mNativeTab);
+    }
+
+    @Override
+    public void removeTabAt(int position) {
+        mActionBar.removeTabAt(position);
+    }
+
+    @Override
+    public void removeAllTabs() {
+        mActionBar.removeAllTabs();
+    }
+
+    @Override
+    public void selectTab(Tab tab) {
+        mActionBar.selectTab(((TabWrapper) tab).mNativeTab);
+    }
+
+    @Override
+    public Tab getSelectedTab() {
+        android.app.ActionBar.Tab selected = mActionBar.getSelectedTab();
+        return (selected != null) ? (Tab) selected.getTag() : null;
+    }
+
+    @Override
+    public Tab getTabAt(int index) {
+        android.app.ActionBar.Tab selected = mActionBar.getTabAt(index);
+        return (selected != null) ? (Tab) selected.getTag() : null;
+    }
+
+    @Override
+    public int getTabCount() {
+        return mActionBar.getTabCount();
+    }
+
+    @Override
+    public int getHeight() {
+        return mActionBar.getHeight();
+    }
+
+    @Override
+    public void show() {
+        mActionBar.show();
+    }
+
+    @Override
+    public void hide() {
+        mActionBar.hide();
+    }
+
+    @Override
+    public boolean isShowing() {
+        return mActionBar.isShowing();
+    }
+
+    @Override
+    public void addOnMenuVisibilityListener(OnMenuVisibilityListener listener) {
+        mMenuVisibilityListeners.add(listener);
+    }
+
+    @Override
+    public void removeOnMenuVisibilityListener(OnMenuVisibilityListener listener) {
+        mMenuVisibilityListeners.remove(listener);
+    }
+
+    @Override
+    public void onMenuVisibilityChanged(boolean isVisible) {
+        for (OnMenuVisibilityListener listener : mMenuVisibilityListeners) {
+            listener.onMenuVisibilityChanged(isVisible);
+        }
     }
 
     public class TabWrapper extends ActionBar.Tab implements android.app.ActionBar.TabListener {
@@ -332,7 +431,7 @@ public class ActionBarWrapper extends ActionBar implements android.app.ActionBar
             if (mListener != null) {
                 FragmentTransaction trans = null;
                 if (mActivity instanceof FragmentActivity) {
-                    trans = ((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction()
+                    trans = ((FragmentActivity) mActivity).getSupportFragmentManager().beginTransaction()
                             .disallowAddToBackStack();
                 }
 
@@ -349,7 +448,7 @@ public class ActionBarWrapper extends ActionBar implements android.app.ActionBar
             if (mListener != null) {
 
                 if (mFragmentTransaction == null && mActivity instanceof FragmentActivity) {
-                    mFragmentTransaction = ((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction()
+                    mFragmentTransaction = ((FragmentActivity) mActivity).getSupportFragmentManager().beginTransaction()
                             .disallowAddToBackStack();
                 }
 
@@ -369,112 +468,13 @@ public class ActionBarWrapper extends ActionBar implements android.app.ActionBar
             if (mListener != null) {
                 FragmentTransaction trans = null;
                 if (mActivity instanceof FragmentActivity) {
-                    trans = ((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction()
+                    trans = ((FragmentActivity) mActivity).getSupportFragmentManager().beginTransaction()
                             .disallowAddToBackStack();
                     mFragmentTransaction = trans;
                 }
 
                 mListener.onTabUnselected(this, trans);
             }
-        }
-    }
-
-    @Override
-    public Tab newTab() {
-        return new TabWrapper(mActionBar.newTab());
-    }
-
-    @Override
-    public void addTab(Tab tab) {
-        mActionBar.addTab(((TabWrapper)tab).mNativeTab);
-    }
-
-    @Override
-    public void addTab(Tab tab, boolean setSelected) {
-        mActionBar.addTab(((TabWrapper)tab).mNativeTab, setSelected);
-    }
-
-    @Override
-    public void addTab(Tab tab, int position) {
-        mActionBar.addTab(((TabWrapper)tab).mNativeTab, position);
-    }
-
-    @Override
-    public void addTab(Tab tab, int position, boolean setSelected) {
-        mActionBar.addTab(((TabWrapper)tab).mNativeTab, position, setSelected);
-    }
-
-    @Override
-    public void removeTab(Tab tab) {
-        mActionBar.removeTab(((TabWrapper)tab).mNativeTab);
-    }
-
-    @Override
-    public void removeTabAt(int position) {
-        mActionBar.removeTabAt(position);
-    }
-
-    @Override
-    public void removeAllTabs() {
-        mActionBar.removeAllTabs();
-    }
-
-    @Override
-    public void selectTab(Tab tab) {
-        mActionBar.selectTab(((TabWrapper)tab).mNativeTab);
-    }
-
-    @Override
-    public Tab getSelectedTab() {
-        android.app.ActionBar.Tab selected = mActionBar.getSelectedTab();
-        return (selected != null) ? (Tab)selected.getTag() : null;
-    }
-
-    @Override
-    public Tab getTabAt(int index) {
-        android.app.ActionBar.Tab selected = mActionBar.getTabAt(index);
-        return (selected != null) ? (Tab)selected.getTag() : null;
-    }
-
-    @Override
-    public int getTabCount() {
-        return mActionBar.getTabCount();
-    }
-
-    @Override
-    public int getHeight() {
-        return mActionBar.getHeight();
-    }
-
-    @Override
-    public void show() {
-        mActionBar.show();
-    }
-
-    @Override
-    public void hide() {
-        mActionBar.hide();
-    }
-
-    @Override
-    public boolean isShowing() {
-        return mActionBar.isShowing();
-    }
-
-    @Override
-    public void addOnMenuVisibilityListener(OnMenuVisibilityListener listener) {
-        mMenuVisibilityListeners.add(listener);
-    }
-
-    @Override
-    public void removeOnMenuVisibilityListener(OnMenuVisibilityListener listener) {
-        mMenuVisibilityListeners.remove(listener);
-    }
-
-    @Override
-    public void onMenuVisibilityChanged(boolean isVisible) {
-        for (OnMenuVisibilityListener listener : mMenuVisibilityListeners) {
-            listener.onMenuVisibilityChanged(isVisible);
         }
     }
 }

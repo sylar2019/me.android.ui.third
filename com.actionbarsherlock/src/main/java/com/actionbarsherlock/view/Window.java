@@ -54,11 +54,10 @@ public abstract class Window extends android.view.Window {
          * Called when a panel's menu item has been selected by the user.
          *
          * @param featureId The panel that the menu is in.
-         * @param item The menu item that was selected.
-         *
+         * @param item      The menu item that was selected.
          * @return boolean Return true to finish processing of selection, or
-         *         false to perform the normal menu handling (calling its
-         *         Runnable or sending a Message to its target Handler).
+         * false to perform the normal menu handling (calling its
+         * Runnable or sending a Message to its target Handler).
          */
         public boolean onMenuItemSelected(int featureId, MenuItem item);
     }

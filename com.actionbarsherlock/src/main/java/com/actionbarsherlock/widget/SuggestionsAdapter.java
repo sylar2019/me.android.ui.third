@@ -42,6 +42,7 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+
 import com.actionbarsherlock.R;
 
 import java.io.FileNotFoundException;
@@ -57,28 +58,23 @@ import java.util.WeakHashMap;
  */
 class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListener {
 
-    private static final boolean DBG = false;
-    private static final String LOG_TAG = "SuggestionsAdapter";
-    private static final int QUERY_LIMIT = 50;
-
     static final int REFINE_NONE = 0;
     static final int REFINE_BY_ENTRY = 1;
     static final int REFINE_ALL = 2;
-
+    static final int INVALID_INDEX = -1;
+    private static final boolean DBG = false;
+    private static final String LOG_TAG = "SuggestionsAdapter";
+    private static final int QUERY_LIMIT = 50;
     @SuppressWarnings("unused")
-	private SearchManager mSearchManager;
+    private SearchManager mSearchManager;
     private SearchableInfo mSearchable;
     private SearchView mSearchView;
     private Context mProviderContext;
     private WeakHashMap<String, Drawable.ConstantState> mOutsideDrawablesCache;
     private boolean mClosed = false;
     private int mQueryRefinement = REFINE_BY_ENTRY;
-
     // URL color
     private ColorStateList mUrlColor;
-
-    static final int INVALID_INDEX = -1;
-
     // Cached column indexes, updated when the cursor changes.
     private int mText1Col = INVALID_INDEX;
     private int mText2Col = INVALID_INDEX;
@@ -94,13 +90,12 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
      * The amount of time we delay in the filter when the user presses the delete key.
      */
     //private static final long DELETE_KEY_POST_DELAY = 500L;
-
     public SuggestionsAdapter(Context context, SearchView searchView,
                               SearchableInfo searchable, WeakHashMap<String, Drawable.ConstantState> outsideDrawablesCache) {
         super(context,
-            R.layout.abs__search_dropdown_item_icons_2line,
-            null,   // no initial cursor
-            true);  // auto-requery
+                R.layout.abs__search_dropdown_item_icons_2line,
+                null,   // no initial cursor
+                true);  // auto-requery
         mSearchManager = (SearchManager) mContext.getSystemService(Context.SEARCH_SERVICE);
         mSearchable = searchable;
         mProviderContext = mContext;
@@ -136,24 +131,52 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
     }
 
     /**
+     * Gets the value of a string column by name.
+     *
+     * @param cursor     Cursor to read the value from.
+     * @param columnName The name of the column to read.
+     * @return The value of the given column, or <code>null</null>
+     * if the cursor does not contain the given column.
+     */
+    public static String getColumnString(Cursor cursor, String columnName) {
+        int col = cursor.getColumnIndex(columnName);
+        return getStringOrNull(cursor, col);
+    }
+
+    private static String getStringOrNull(Cursor cursor, int col) {
+        if (col == INVALID_INDEX) {
+            return null;
+        }
+        try {
+            return cursor.getString(col);
+        } catch (Exception e) {
+            Log.e(LOG_TAG,
+                    "unexpected error retrieving valid column from cursor, "
+                            + "did the remote process die?", e);
+            return null;
+        }
+    }
+
+    /**
+     * Returns the current query refinement preference.
+     *
+     * @return value of query refinement preference
+     */
+    public int getQueryRefinement() {
+        return mQueryRefinement;
+    }
+
+    /**
      * Enables query refinement for all suggestions. This means that an additional icon
      * will be shown for each entry. When clicked, the suggested text on that line will be
      * copied to the query text field.
      * <p>
      *
      * @param refineWhat which queries to refine. Possible values are {@link #REFINE_NONE},
-     * {@link #REFINE_BY_ENTRY}, and {@link #REFINE_ALL}.
+     *                   {@link #REFINE_BY_ENTRY}, and {@link #REFINE_ALL}.
      */
     public void setQueryRefinement(int refineWhat) {
         mQueryRefinement = refineWhat;
-    }
-
-    /**
-     * Returns the current query refinement preference.
-     * @return value of query refinement preference
-     */
-    public int getQueryRefinement() {
-        return mQueryRefinement;
     }
 
     /**
@@ -231,7 +254,7 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
         // inject query, either as selection args or inline
         String[] selArgs = null;
         if (selection != null) {    // use selection if provided
-            selArgs = new String[] { query };
+            selArgs = new String[]{query};
         } else {                    // no selection, use REST pattern
             uriBuilder.appendPath(query);
         }
@@ -325,26 +348,6 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
         View v = super.newView(context, cursor, parent);
         v.setTag(new ChildViewCache(v));
         return v;
-    }
-
-    /**
-     * Cache of the child views of drop-drown list items, to avoid looking up the children
-     * each time the contents of a list item are changed.
-     */
-    private final static class ChildViewCache {
-        public final TextView mText1;
-        public final TextView mText2;
-        public final ImageView mIcon1;
-        public final ImageView mIcon2;
-        public final ImageView mIconRefine;
-
-        public ChildViewCache(View v) {
-            mText1 = (TextView) v.findViewById(android.R.id.text1);
-            mText2 = (TextView) v.findViewById(android.R.id.text2);
-            mIcon1 = (ImageView) v.findViewById(android.R.id.icon1);
-            mIcon2 = (ImageView) v.findViewById(android.R.id.icon2);
-            mIconRefine = (ImageView) v.findViewById(R.id.edit_query);
-        }
     }
 
     @Override
@@ -482,9 +485,9 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
      * Gets the text to show in the query field when a suggestion is selected.
      *
      * @param cursor The Cursor to read the suggestion data from. The Cursor should already
-     *        be moved to the suggestion that is to be read from.
+     *               be moved to the suggestion that is to be read from.
      * @return The text to show, or <code>null</code> if the query should not be
-     *         changed when selecting this suggestion.
+     * changed when selecting this suggestion.
      */
     @Override
     public CharSequence convertToString(Cursor cursor) {
@@ -525,21 +528,21 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
 
     /**
      * Gets a drawable given a value provided by a suggestion provider.
-     *
+     * <p>
      * This value could be just the string value of a resource id
      * (e.g., "2130837524"), in which case we will try to retrieve a drawable from
      * the provider's resources. If the value is not an integer, it is
      * treated as a Uri and opened with
      * {@link ContentResolver#openOutputStream(android.net.Uri, String)}.
-     *
+     * <p>
      * All resources and URIs are read using the suggestion provider's context.
-     *
+     * <p>
      * If the string is not formatted as expected, or no drawable can be found for
      * the provided value, this method returns null.
      *
      * @param drawableId a string like "2130837524",
-     *        "android.resource://com.android.alarmclock/2130837524",
-     *        or "content://contacts/photos/253".
+     *                   "android.resource://com.android.alarmclock/2130837524",
+     *                   or "content://contacts/photos/253".
      * @return a Drawable, or null if none found
      */
     private Drawable getDrawableFromResourceValue(String drawableId) {
@@ -684,10 +687,10 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
      *
      * @param component Name of an activity.
      * @return A drawable, or {@code null} if neither the activity nor the application
-     *         has an icon set.
+     * has an icon set.
      */
     @SuppressWarnings("unused")
-	private Drawable getActivityIconWithCache(ComponentName component) {
+    private Drawable getActivityIconWithCache(ComponentName component) {
         // First check the icon cache
         String componentIconKey = component.flattenToShortString();
         // Using containsKey() since we also store null values.
@@ -708,7 +711,7 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
      *
      * @param component Name of an activity.
      * @return A drawable, or {@code null} if neither the acitivy or the application
-     *         have an icon set.
+     * have an icon set.
      */
     private Drawable getActivityIcon(ComponentName component) {
         PackageManager pm = mContext.getPackageManager();
@@ -732,29 +735,22 @@ class SuggestionsAdapter extends ResourceCursorAdapter implements OnClickListene
     }
 
     /**
-     * Gets the value of a string column by name.
-     *
-     * @param cursor Cursor to read the value from.
-     * @param columnName The name of the column to read.
-     * @return The value of the given column, or <code>null</null>
-     *         if the cursor does not contain the given column.
+     * Cache of the child views of drop-drown list items, to avoid looking up the children
+     * each time the contents of a list item are changed.
      */
-    public static String getColumnString(Cursor cursor, String columnName) {
-        int col = cursor.getColumnIndex(columnName);
-        return getStringOrNull(cursor, col);
-    }
+    private final static class ChildViewCache {
+        public final TextView mText1;
+        public final TextView mText2;
+        public final ImageView mIcon1;
+        public final ImageView mIcon2;
+        public final ImageView mIconRefine;
 
-    private static String getStringOrNull(Cursor cursor, int col) {
-        if (col == INVALID_INDEX) {
-            return null;
-        }
-        try {
-            return cursor.getString(col);
-        } catch (Exception e) {
-            Log.e(LOG_TAG,
-                    "unexpected error retrieving valid column from cursor, "
-                            + "did the remote process die?", e);
-            return null;
+        public ChildViewCache(View v) {
+            mText1 = (TextView) v.findViewById(android.R.id.text1);
+            mText2 = (TextView) v.findViewById(android.R.id.text2);
+            mIcon1 = (ImageView) v.findViewById(android.R.id.icon1);
+            mIcon2 = (ImageView) v.findViewById(android.R.id.icon2);
+            mIconRefine = (ImageView) v.findViewById(R.id.edit_query);
         }
     }
 }

@@ -36,23 +36,21 @@ import android.widget.SpinnerAdapter;
  */
 public abstract class IcsAbsSpinner extends IcsAdapterView<SpinnerAdapter> {
     private static final boolean IS_HONEYCOMB = Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB;
-
+    final Rect mSpinnerPadding = new Rect();
+    final RecycleBin mRecycler = new RecycleBin();
     SpinnerAdapter mAdapter;
-
     int mHeightMeasureSpec;
     int mWidthMeasureSpec;
     boolean mBlockLayoutRequests;
-
     int mSelectionLeftPadding = 0;
     int mSelectionTopPadding = 0;
     int mSelectionRightPadding = 0;
     int mSelectionBottomPadding = 0;
-    final Rect mSpinnerPadding = new Rect();
-
-    final RecycleBin mRecycler = new RecycleBin();
     private DataSetObserver mDataSetObserver;
 
-    /** Temporary frame to hold a child View's frame rectangle */
+    /**
+     * Temporary frame to hold a child View's frame rectangle
+     */
     private Rect mTouchFrame;
 
     public IcsAbsSpinner(Context context) {
@@ -94,52 +92,6 @@ public abstract class IcsAbsSpinner extends IcsAdapterView<SpinnerAdapter> {
     }
 
     /**
-     * The Adapter is used to provide the data which backs this Spinner.
-     * It also provides methods to transform spinner items based on their position
-     * relative to the selected item.
-     * @param adapter The SpinnerAdapter to use for this Spinner
-     */
-    @Override
-    public void setAdapter(SpinnerAdapter adapter) {
-        if (null != mAdapter) {
-            mAdapter.unregisterDataSetObserver(mDataSetObserver);
-            resetList();
-        }
-
-        mAdapter = adapter;
-
-        mOldSelectedPosition = INVALID_POSITION;
-        mOldSelectedRowId = INVALID_ROW_ID;
-
-        if (mAdapter != null) {
-            mOldItemCount = mItemCount;
-            mItemCount = mAdapter.getCount();
-            checkFocus();
-
-            mDataSetObserver = new AdapterDataSetObserver();
-            mAdapter.registerDataSetObserver(mDataSetObserver);
-
-            int position = mItemCount > 0 ? 0 : INVALID_POSITION;
-
-            setSelectedPositionInt(position);
-            setNextSelectedPositionInt(position);
-
-            if (mItemCount == 0) {
-                // Nothing selected
-                checkSelectionChanged();
-            }
-
-        } else {
-            checkFocus();
-            resetList();
-            // Nothing selected
-            checkSelectionChanged();
-        }
-
-        requestLayout();
-    }
-
-    /**
      * Clear out all children from the list
      */
     void resetList() {
@@ -157,7 +109,7 @@ public abstract class IcsAbsSpinner extends IcsAdapterView<SpinnerAdapter> {
 
     /**
      * @see android.view.View#measure(int, int)
-     *
+     * <p>
      * Figure out the dimensions of this Spinner. The width comes from
      * the widthMeasureSpec as Spinnners can't have their width set to
      * UNSPECIFIED. The height is based on the height of the selected item
@@ -289,18 +241,16 @@ public abstract class IcsAbsSpinner extends IcsAdapterView<SpinnerAdapter> {
         invalidate();
     }
 
-
     /**
      * Makes the item at the supplied position selected.
      *
      * @param position Position to select
-     * @param animate Should the transition be animated
-     *
+     * @param animate  Should the transition be animated
      */
     void setSelectionInt(int position, boolean animate) {
         if (position != mOldSelectedPosition) {
             mBlockLayoutRequests = true;
-            int delta  = position - mSelectedPosition;
+            int delta = position - mSelectedPosition;
             setNextSelectedPositionInt(position);
             layout(delta, animate);
             mBlockLayoutRequests = false;
@@ -336,6 +286,53 @@ public abstract class IcsAbsSpinner extends IcsAdapterView<SpinnerAdapter> {
         return mAdapter;
     }
 
+    /**
+     * The Adapter is used to provide the data which backs this Spinner.
+     * It also provides methods to transform spinner items based on their position
+     * relative to the selected item.
+     *
+     * @param adapter The SpinnerAdapter to use for this Spinner
+     */
+    @Override
+    public void setAdapter(SpinnerAdapter adapter) {
+        if (null != mAdapter) {
+            mAdapter.unregisterDataSetObserver(mDataSetObserver);
+            resetList();
+        }
+
+        mAdapter = adapter;
+
+        mOldSelectedPosition = INVALID_POSITION;
+        mOldSelectedRowId = INVALID_ROW_ID;
+
+        if (mAdapter != null) {
+            mOldItemCount = mItemCount;
+            mItemCount = mAdapter.getCount();
+            checkFocus();
+
+            mDataSetObserver = new AdapterDataSetObserver();
+            mAdapter.registerDataSetObserver(mDataSetObserver);
+
+            int position = mItemCount > 0 ? 0 : INVALID_POSITION;
+
+            setSelectedPositionInt(position);
+            setNextSelectedPositionInt(position);
+
+            if (mItemCount == 0) {
+                // Nothing selected
+                checkSelectionChanged();
+            }
+
+        } else {
+            checkFocus();
+            resetList();
+            // Nothing selected
+            checkSelectionChanged();
+        }
+
+        requestLayout();
+    }
+
     @Override
     public int getCount() {
         return mItemCount;
@@ -347,7 +344,7 @@ public abstract class IcsAbsSpinner extends IcsAdapterView<SpinnerAdapter> {
      * @param x X in local coordinate
      * @param y Y in local coordinate
      * @return The position of the item which contains the specified point, or
-     *         {@link #INVALID_POSITION} if the point does not intersect an item.
+     * {@link #INVALID_POSITION} if the point does not intersect an item.
      */
     public int pointToPosition(int x, int y) {
         Rect frame = mTouchFrame;
@@ -369,7 +366,46 @@ public abstract class IcsAbsSpinner extends IcsAdapterView<SpinnerAdapter> {
         return INVALID_POSITION;
     }
 
+    @Override
+    public Parcelable onSaveInstanceState() {
+        Parcelable superState = super.onSaveInstanceState();
+        SavedState ss = new SavedState(superState);
+        ss.selectedId = getSelectedItemId();
+        if (ss.selectedId >= 0) {
+            ss.position = getSelectedItemPosition();
+        } else {
+            ss.position = INVALID_POSITION;
+        }
+        return ss;
+    }
+
+    @Override
+    public void onRestoreInstanceState(Parcelable state) {
+        SavedState ss = (SavedState) state;
+
+        super.onRestoreInstanceState(ss.getSuperState());
+
+        if (ss.selectedId >= 0) {
+            mDataChanged = true;
+            mNeedSync = true;
+            mSyncRowId = ss.selectedId;
+            mSyncPosition = ss.position;
+            mSyncMode = SYNC_SELECTED_POSITION;
+            requestLayout();
+        }
+    }
+
     static class SavedState extends BaseSavedState {
+        public static final Parcelable.Creator<SavedState> CREATOR
+                = new Parcelable.Creator<SavedState>() {
+            public SavedState createFromParcel(Parcel in) {
+                return new SavedState(in);
+            }
+
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+        };
         long selectedId;
         int position;
 
@@ -402,46 +438,6 @@ public abstract class IcsAbsSpinner extends IcsAdapterView<SpinnerAdapter> {
                     + Integer.toHexString(System.identityHashCode(this))
                     + " selectedId=" + selectedId
                     + " position=" + position + "}";
-        }
-
-        public static final Parcelable.Creator<SavedState> CREATOR
-                = new Parcelable.Creator<SavedState>() {
-            public SavedState createFromParcel(Parcel in) {
-                return new SavedState(in);
-            }
-
-            public SavedState[] newArray(int size) {
-                return new SavedState[size];
-            }
-        };
-    }
-
-    @Override
-    public Parcelable onSaveInstanceState() {
-        Parcelable superState = super.onSaveInstanceState();
-        SavedState ss = new SavedState(superState);
-        ss.selectedId = getSelectedItemId();
-        if (ss.selectedId >= 0) {
-            ss.position = getSelectedItemPosition();
-        } else {
-            ss.position = INVALID_POSITION;
-        }
-        return ss;
-    }
-
-    @Override
-    public void onRestoreInstanceState(Parcelable state) {
-        SavedState ss = (SavedState) state;
-
-        super.onRestoreInstanceState(ss.getSuperState());
-
-        if (ss.selectedId >= 0) {
-            mDataChanged = true;
-            mNeedSync = true;
-            mSyncRowId = ss.selectedId;
-            mSyncPosition = ss.position;
-            mSyncMode = SYNC_SELECTED_POSITION;
-            requestLayout();
         }
     }
 

@@ -16,8 +16,6 @@
 
 package com.actionbarsherlock.internal.view.menu;
 
-import com.actionbarsherlock.R;
-
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
@@ -32,42 +30,39 @@ import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.TextView;
 
+import com.actionbarsherlock.R;
+
 /**
  * The item view for each item in the ListView-based MenuViews.
  */
 public class ListMenuItemView extends LinearLayout implements MenuView.ItemView {
+    final Context mContext;
     private MenuItemImpl mItemData;
-
     private ImageView mIconView;
     private RadioButton mRadioButton;
     private TextView mTitleView;
     private CheckBox mCheckBox;
     private TextView mShortcutView;
-
     private Drawable mBackground;
     private int mTextAppearance;
     private Context mTextAppearanceContext;
-    private boolean mPreserveIconSpacing;
 
     //UNUSED private int mMenuType;
-
+    private boolean mPreserveIconSpacing;
     private LayoutInflater mInflater;
-
     private boolean mForceShowIcon;
-
-    final Context mContext;
 
     public ListMenuItemView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs);
         mContext = context;
 
         TypedArray a =
-            context.obtainStyledAttributes(
-                attrs, R.styleable.SherlockMenuView, defStyle, 0);
+                context.obtainStyledAttributes(
+                        attrs, R.styleable.SherlockMenuView, defStyle, 0);
 
         mBackground = a.getDrawable(R.styleable.SherlockMenuView_itemBackground);
         mTextAppearance = a.getResourceId(R.styleable.
-                                          SherlockMenuView_itemTextAppearance, -1);
+                SherlockMenuView_itemTextAppearance, -1);
         mPreserveIconSpacing = a.getBoolean(
                 R.styleable.SherlockMenuView_preserveIconSpacing, false);
         mTextAppearanceContext = context;
@@ -88,7 +83,7 @@ public class ListMenuItemView extends LinearLayout implements MenuView.ItemView 
         mTitleView = (TextView) findViewById(R.id.abs__title);
         if (mTextAppearance != -1) {
             mTitleView.setTextAppearance(mTextAppearanceContext,
-                                         mTextAppearance);
+                    mTextAppearance);
         }
 
         mShortcutView = (TextView) findViewById(R.id.abs__shortcut);
@@ -249,7 +244,7 @@ public class ListMenuItemView extends LinearLayout implements MenuView.ItemView 
         LayoutInflater inflater = getInflater();
         mRadioButton =
                 (RadioButton) inflater.inflate(R.layout.abs__list_menu_item_radio,
-                this, false);
+                        this, false);
         addView(mRadioButton);
     }
 
@@ -257,7 +252,7 @@ public class ListMenuItemView extends LinearLayout implements MenuView.ItemView 
         LayoutInflater inflater = getInflater();
         mCheckBox =
                 (CheckBox) inflater.inflate(R.layout.abs__list_menu_item_checkbox,
-                this, false);
+                        this, false);
         addView(mCheckBox);
     }
 

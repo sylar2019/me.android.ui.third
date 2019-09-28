@@ -74,59 +74,31 @@ import com.actionbarsherlock.widget.ActivityChooserModel.OnChooseActivityListene
 public class ShareActionProvider extends ActionProvider {
 
     /**
-     * Listener for the event of selecting a share target.
+     * The default name for storing share history.
      */
-    public interface OnShareTargetSelectedListener {
-
-        /**
-         * Called when a share target has been selected. The client can
-         * decide whether to handle the intent or rely on the default
-         * behavior which is launching it.
-         * <p>
-         * <strong>Note:</strong> Modifying the intent is not permitted and
-         *     any changes to the latter will be ignored.
-         * </p>
-         *
-         * @param source The source of the notification.
-         * @param intent The intent for launching the chosen share target.
-         * @return Whether the client has handled the intent.
-         */
-        public boolean onShareTargetSelected(ShareActionProvider source, Intent intent);
-    }
-
+    public static final String DEFAULT_SHARE_HISTORY_FILE_NAME = "share_history.xml";
     /**
      * The default for the maximal number of activities shown in the sub-menu.
      */
     private static final int DEFAULT_INITIAL_ACTIVITY_COUNT = 4;
-
-    /**
-     * The the maximum number activities shown in the sub-menu.
-     */
-    private int mMaxShownActivityCount = DEFAULT_INITIAL_ACTIVITY_COUNT;
-
     /**
      * Listener for handling menu item clicks.
      */
     private final ShareMenuItemOnMenuItemClickListener mOnMenuItemClickListener =
-        new ShareMenuItemOnMenuItemClickListener();
-
-    /**
-     * The default name for storing share history.
-     */
-    public static final String DEFAULT_SHARE_HISTORY_FILE_NAME = "share_history.xml";
-
+            new ShareMenuItemOnMenuItemClickListener();
     /**
      * Context for accessing resources.
      */
     private final Context mContext;
-
+    /**
+     * The the maximum number activities shown in the sub-menu.
+     */
+    private int mMaxShownActivityCount = DEFAULT_INITIAL_ACTIVITY_COUNT;
     /**
      * The name of the file with share history data.
      */
     private String mShareHistoryFileName = DEFAULT_SHARE_HISTORY_FILE_NAME;
-
     private OnShareTargetSelectedListener mOnShareTargetSelectedListener;
-
     private OnChooseActivityListener mOnChooseActivityListener;
 
     /**
@@ -145,8 +117,9 @@ public class ShareActionProvider extends ActionProvider {
      * not rely on the default behavior which is to launch the activity.
      * <p>
      * <strong>Note:</strong> If you choose the backing share history file
-     *     you will still be notified in this callback.
+     * you will still be notified in this callback.
      * </p>
+     *
      * @param listener The listener.
      */
     public void setOnShareTargetSelectedListener(OnShareTargetSelectedListener listener) {
@@ -206,8 +179,8 @@ public class ShareActionProvider extends ActionProvider {
         for (int i = 0; i < collapsedActivityCount; i++) {
             ResolveInfo activity = dataModel.getActivity(i);
             subMenu.add(0, i, i, activity.loadLabel(packageManager))
-                .setIcon(activity.loadIcon(packageManager))
-                .setOnMenuItemClickListener(mOnMenuItemClickListener);
+                    .setIcon(activity.loadIcon(packageManager))
+                    .setOnMenuItemClickListener(mOnMenuItemClickListener);
         }
 
         if (collapsedActivityCount < expandedActivityCount) {
@@ -218,8 +191,8 @@ public class ShareActionProvider extends ActionProvider {
             for (int i = 0; i < expandedActivityCount; i++) {
                 ResolveInfo activity = dataModel.getActivity(i);
                 expandedSubMenu.add(0, i, i, activity.loadLabel(packageManager))
-                    .setIcon(activity.loadIcon(packageManager))
-                    .setOnMenuItemClickListener(mOnMenuItemClickListener);
+                        .setIcon(activity.loadIcon(packageManager))
+                        .setOnMenuItemClickListener(mOnMenuItemClickListener);
             }
         }
     }
@@ -258,14 +231,49 @@ public class ShareActionProvider extends ActionProvider {
      * </p>
      *
      * @param shareIntent The share intent.
-     *
      * @see Intent#ACTION_SEND
      * @see Intent#ACTION_SEND_MULTIPLE
      */
     public void setShareIntent(Intent shareIntent) {
         ActivityChooserModel dataModel = ActivityChooserModel.get(mContext,
-            mShareHistoryFileName);
+                mShareHistoryFileName);
         dataModel.setIntent(shareIntent);
+    }
+
+    /**
+     * Set the activity chooser policy of the model backed by the current
+     * share history file if needed which is if there is a registered callback.
+     */
+    private void setActivityChooserPolicyIfNeeded() {
+        if (mOnShareTargetSelectedListener == null) {
+            return;
+        }
+        if (mOnChooseActivityListener == null) {
+            mOnChooseActivityListener = new ShareAcitivityChooserModelPolicy();
+        }
+        ActivityChooserModel dataModel = ActivityChooserModel.get(mContext, mShareHistoryFileName);
+        dataModel.setOnChooseActivityListener(mOnChooseActivityListener);
+    }
+
+    /**
+     * Listener for the event of selecting a share target.
+     */
+    public interface OnShareTargetSelectedListener {
+
+        /**
+         * Called when a share target has been selected. The client can
+         * decide whether to handle the intent or rely on the default
+         * behavior which is launching it.
+         * <p>
+         * <strong>Note:</strong> Modifying the intent is not permitted and
+         * any changes to the latter will be ignored.
+         * </p>
+         *
+         * @param source The source of the notification.
+         * @param intent The intent for launching the chosen share target.
+         * @return Whether the client has handled the intent.
+         */
+        public boolean onShareTargetSelected(ShareActionProvider source, Intent intent);
     }
 
     /**
@@ -283,21 +291,6 @@ public class ShareActionProvider extends ActionProvider {
             }
             return true;
         }
-    }
-
-    /**
-     * Set the activity chooser policy of the model backed by the current
-     * share history file if needed which is if there is a registered callback.
-     */
-    private void setActivityChooserPolicyIfNeeded() {
-        if (mOnShareTargetSelectedListener == null) {
-            return;
-        }
-        if (mOnChooseActivityListener == null) {
-            mOnChooseActivityListener = new ShareAcitivityChooserModelPolicy();
-        }
-        ActivityChooserModel dataModel = ActivityChooserModel.get(mContext, mShareHistoryFileName);
-        dataModel.setOnChooseActivityListener(mOnChooseActivityListener);
     }
 
     /**

@@ -16,12 +16,13 @@
 
 package com.actionbarsherlock.internal.view.menu;
 
-import java.util.ArrayList;
 import android.content.Context;
 import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import java.util.ArrayList;
 
 /**
  * Base class for MenuPresenters that have a consistent container view and item
@@ -36,19 +37,16 @@ public abstract class BaseMenuPresenter implements MenuPresenter {
     protected MenuBuilder mMenu;
     protected LayoutInflater mSystemInflater;
     protected LayoutInflater mInflater;
+    protected MenuView mMenuView;
     private Callback mCallback;
-
     private int mMenuLayoutRes;
     private int mItemLayoutRes;
-
-    protected MenuView mMenuView;
-
     private int mId;
 
     /**
      * Construct a new BaseMenuPresenter.
      *
-     * @param context Context for generating system-supplied views
+     * @param context       Context for generating system-supplied views
      * @param menuLayoutRes Layout resource ID for the menu container view
      * @param itemLayoutRes Layout resource ID for a single item view
      */
@@ -120,7 +118,7 @@ public abstract class BaseMenuPresenter implements MenuPresenter {
     /**
      * Add an item view at the given index.
      *
-     * @param itemView View to add
+     * @param itemView   View to add
      * @param childIndex Index within the parent to insert at
      */
     protected void addItemView(View itemView, int childIndex) {
@@ -133,7 +131,8 @@ public abstract class BaseMenuPresenter implements MenuPresenter {
 
     /**
      * Filter the child view at index and remove it if appropriate.
-     * @param parent Parent to filter from
+     *
+     * @param parent     Parent to filter from
      * @param childIndex Index to filter
      * @return true if the child view at index was removed
      */
@@ -161,9 +160,9 @@ public abstract class BaseMenuPresenter implements MenuPresenter {
      * re-use the view passed as convertView if present. The returned view will be populated
      * with data from the item parameter.
      *
-     * @param item Item to present
+     * @param item        Item to present
      * @param convertView Existing view to reuse
-     * @param parent Intended parent view - use for inflation.
+     * @param parent      Intended parent view - use for inflation.
      * @return View that presents the requested menu item
      */
     public View getItemView(MenuItemImpl item, View convertView, ViewGroup parent) {
@@ -180,7 +179,7 @@ public abstract class BaseMenuPresenter implements MenuPresenter {
     /**
      * Bind item data to an existing item view.
      *
-     * @param item Item to bind
+     * @param item     Item to bind
      * @param itemView View to populate with item data
      */
     public abstract void bindItemView(MenuItemImpl item, MenuView.ItemView itemView);
@@ -189,7 +188,7 @@ public abstract class BaseMenuPresenter implements MenuPresenter {
      * Filter item by child index and item data.
      *
      * @param childIndex Indended presentation index of this item
-     * @param item Item to present
+     * @param item       Item to present
      * @return true if this item should be included in this menu presentation; false otherwise
      */
     public boolean shouldIncludeItem(int childIndex, MenuItemImpl item) {

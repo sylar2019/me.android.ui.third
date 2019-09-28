@@ -46,17 +46,17 @@ public class PullToRefreshListFooter extends LinearLayout {
         }
     }
 
+    public int getBottomMargin() {
+        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) mContentView.getLayoutParams();
+        return lp.bottomMargin;
+    }
+
     public void setBottomMargin(int height) {
         if (height < 0)
             return;
         LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) mContentView.getLayoutParams();
         lp.bottomMargin = height;
         mContentView.setLayoutParams(lp);
-    }
-
-    public int getBottomMargin() {
-        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) mContentView.getLayoutParams();
-        return lp.bottomMargin;
     }
 
     /**
@@ -68,7 +68,7 @@ public class PullToRefreshListFooter extends LinearLayout {
     }
 
     /**
-     * loading status 
+     * loading status
      */
     public void loading() {
         mHintView.setVisibility(View.GONE);

@@ -16,12 +16,12 @@
 
 package com.actionbarsherlock.internal.nineoldandroids.animation;
 
+import android.view.animation.Interpolator;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-
-import android.view.animation.Interpolator;
 
 /**
  * This class plays a set of {@link Animator} objects in the specified order. Animations
@@ -53,43 +53,6 @@ public final class AnimatorSet extends Animator {
      */
 
     /**
-     * Tracks animations currently being played, so that we know what to
-     * cancel or end when cancel() or end() is called on this AnimatorSet
-     */
-    private ArrayList<Animator> mPlayingSet = new ArrayList<Animator>();
-
-    /**
-     * Contains all nodes, mapped to their respective Animators. When new
-     * dependency information is added for an Animator, we want to add it
-     * to a single node representing that Animator, not create a new Node
-     * if one already exists.
-     */
-    private HashMap<Animator, Node> mNodeMap = new HashMap<Animator, Node>();
-
-    /**
-     * Set of all nodes created for this AnimatorSet. This list is used upon
-     * starting the set, and the nodes are placed in sorted order into the
-     * sortedNodes collection.
-     */
-    private ArrayList<Node> mNodes = new ArrayList<Node>();
-
-    /**
-     * The sorted list of nodes. This is the order in which the animations will
-     * be played. The details about when exactly they will be played depend
-     * on the dependency relationships of the nodes.
-     */
-    private ArrayList<Node> mSortedNodes = new ArrayList<Node>();
-
-    /**
-     * Flag indicating whether the nodes should be sorted prior to playing. This
-     * flag allows us to cache the previous sorted nodes so that if the sequence
-     * is replayed with no changes, it does not have to re-sort the nodes again.
-     */
-    private boolean mNeedsSort = true;
-
-    private AnimatorSetListener mSetListener = null;
-
-    /**
      * Flag indicating that the AnimatorSet has been manually
      * terminated (by calling cancel() or end()).
      * This flag is used to avoid starting other animations when currently-playing
@@ -97,7 +60,37 @@ public final class AnimatorSet extends Animator {
      * notifications are sent out via the normal AnimatorSetListener mechanism.
      */
     boolean mTerminated = false;
-
+    /**
+     * Tracks animations currently being played, so that we know what to
+     * cancel or end when cancel() or end() is called on this AnimatorSet
+     */
+    private ArrayList<Animator> mPlayingSet = new ArrayList<Animator>();
+    /**
+     * Contains all nodes, mapped to their respective Animators. When new
+     * dependency information is added for an Animator, we want to add it
+     * to a single node representing that Animator, not create a new Node
+     * if one already exists.
+     */
+    private HashMap<Animator, Node> mNodeMap = new HashMap<Animator, Node>();
+    /**
+     * Set of all nodes created for this AnimatorSet. This list is used upon
+     * starting the set, and the nodes are placed in sorted order into the
+     * sortedNodes collection.
+     */
+    private ArrayList<Node> mNodes = new ArrayList<Node>();
+    /**
+     * The sorted list of nodes. This is the order in which the animations will
+     * be played. The details about when exactly they will be played depend
+     * on the dependency relationships of the nodes.
+     */
+    private ArrayList<Node> mSortedNodes = new ArrayList<Node>();
+    /**
+     * Flag indicating whether the nodes should be sorted prior to playing. This
+     * flag allows us to cache the previous sorted nodes so that if the sequence
+     * is replayed with no changes, it does not have to re-sort the nodes again.
+     */
+    private boolean mNeedsSort = true;
+    private AnimatorSetListener mSetListener = null;
     /**
      * Indicates whether an AnimatorSet has been start()'d, whether or
      * not there is a nonzero startDelay.
@@ -164,7 +157,7 @@ public final class AnimatorSet extends Animator {
                 play(items[0]);
             } else {
                 for (int i = 0; i < items.length - 1; ++i) {
-                    play(items[i]).before(items[i+1]);
+                    play(items[i]).before(items[i + 1]);
                 }
             }
         }
@@ -183,7 +176,7 @@ public final class AnimatorSet extends Animator {
                 play(items.get(0));
             } else {
                 for (int i = 0; i < items.size() - 1; ++i) {
-                    play(items.get(i)).before(items.get(i+1));
+                    play(items.get(i)).before(items.get(i + 1));
                 }
             }
         }
@@ -217,9 +210,9 @@ public final class AnimatorSet extends Animator {
         for (Node node : mNodes) {
             Animator animation = node.animation;
             if (animation instanceof AnimatorSet) {
-                ((AnimatorSet)animation).setTarget(target);
+                ((AnimatorSet) animation).setTarget(target);
             } else if (animation instanceof ObjectAnimator) {
-                ((ObjectAnimator)animation).setTarget(target);
+                ((ObjectAnimator) animation).setTarget(target);
             }
         }
     }
@@ -259,8 +252,8 @@ public final class AnimatorSet extends Animator {
      * <code>a2</code> and <code>a3</code>.</p>
      *
      * @param anim The animation that is the dependency used in later calls to the
-     * methods in the returned <code>Builder</code> object. A null parameter will result
-     * in a null <code>Builder</code> return value.
+     *             methods in the returned <code>Builder</code> object. A null parameter will result
+     *             in a null <code>Builder</code> return value.
      * @return Builder The object that constructs the AnimatorSet based on the dependencies
      * outlined in the calls to <code>play</code> and the other methods in the
      * <code>Builder</code object.
@@ -294,7 +287,7 @@ public final class AnimatorSet extends Animator {
                 // If we're currently in the startDelay period, just cancel that animator and
                 // send out the end event to all listeners
                 mDelayAnim.cancel();
-            } else  if (mSortedNodes.size() > 0) {
+            } else if (mSortedNodes.size() > 0) {
                 for (Node node : mSortedNodes) {
                     node.animation.cancel();
                 }
@@ -350,6 +343,7 @@ public final class AnimatorSet extends Animator {
     /**
      * Returns true if any of the child animations of this AnimatorSet have been started and have
      * not yet ended.
+     *
      * @return Whether this AnimatorSet has been started and has not yet ended.
      */
     @Override
@@ -381,7 +375,7 @@ public final class AnimatorSet extends Animator {
     /**
      * The amount of time, in milliseconds, to delay starting the animation after
      * {@link #start()} is called.
-
+     *
      * @param startDelay The amount of the delay, in milliseconds
      */
     @Override
@@ -408,7 +402,7 @@ public final class AnimatorSet extends Animator {
      * then each child animation inherits this duration.
      *
      * @param duration The length of the animation, in milliseconds, of each of the child
-     * animations of this AnimatorSet.
+     *                 animations of this AnimatorSet.
      */
     @Override
     public AnimatorSet setDuration(long duration) {
@@ -506,9 +500,11 @@ public final class AnimatorSet extends Animator {
             mDelayAnim.setDuration(mStartDelay);
             mDelayAnim.addListener(new AnimatorListenerAdapter() {
                 boolean canceled = false;
+
                 public void onAnimationCancel(Animator anim) {
                     canceled = true;
                 }
+
                 public void onAnimationEnd(Animator anim) {
                     if (!canceled) {
                         int numNodes = nodesToStart.size();
@@ -616,160 +612,6 @@ public final class AnimatorSet extends Animator {
     }
 
     /**
-     * This class is the mechanism by which animations are started based on events in other
-     * animations. If an animation has multiple dependencies on other animations, then
-     * all dependencies must be satisfied before the animation is started.
-     */
-    private static class DependencyListener implements AnimatorListener {
-
-        private AnimatorSet mAnimatorSet;
-
-        // The node upon which the dependency is based.
-        private Node mNode;
-
-        // The Dependency rule (WITH or AFTER) that the listener should wait for on
-        // the node
-        private int mRule;
-
-        public DependencyListener(AnimatorSet animatorSet, Node node, int rule) {
-            this.mAnimatorSet = animatorSet;
-            this.mNode = node;
-            this.mRule = rule;
-        }
-
-        /**
-         * Ignore cancel events for now. We may want to handle this eventually,
-         * to prevent follow-on animations from running when some dependency
-         * animation is canceled.
-         */
-        public void onAnimationCancel(Animator animation) {
-        }
-
-        /**
-         * An end event is received - see if this is an event we are listening for
-         */
-        public void onAnimationEnd(Animator animation) {
-            if (mRule == Dependency.AFTER) {
-                startIfReady(animation);
-            }
-        }
-
-        /**
-         * Ignore repeat events for now
-         */
-        public void onAnimationRepeat(Animator animation) {
-        }
-
-        /**
-         * A start event is received - see if this is an event we are listening for
-         */
-        public void onAnimationStart(Animator animation) {
-            if (mRule == Dependency.WITH) {
-                startIfReady(animation);
-            }
-        }
-
-        /**
-         * Check whether the event received is one that the node was waiting for.
-         * If so, mark it as complete and see whether it's time to start
-         * the animation.
-         * @param dependencyAnimation the animation that sent the event.
-         */
-        private void startIfReady(Animator dependencyAnimation) {
-            if (mAnimatorSet.mTerminated) {
-                // if the parent AnimatorSet was canceled, then don't start any dependent anims
-                return;
-            }
-            Dependency dependencyToRemove = null;
-            int numDependencies = mNode.tmpDependencies.size();
-            for (int i = 0; i < numDependencies; ++i) {
-                Dependency dependency = mNode.tmpDependencies.get(i);
-                if (dependency.rule == mRule &&
-                        dependency.node.animation == dependencyAnimation) {
-                    // rule fired - remove the dependency and listener and check to
-                    // see whether it's time to start the animation
-                    dependencyToRemove = dependency;
-                    dependencyAnimation.removeListener(this);
-                    break;
-                }
-            }
-            mNode.tmpDependencies.remove(dependencyToRemove);
-            if (mNode.tmpDependencies.size() == 0) {
-                // all dependencies satisfied: start the animation
-                mNode.animation.start();
-                mAnimatorSet.mPlayingSet.add(mNode.animation);
-            }
-        }
-
-    }
-
-    private class AnimatorSetListener implements AnimatorListener {
-
-        private AnimatorSet mAnimatorSet;
-
-        AnimatorSetListener(AnimatorSet animatorSet) {
-            mAnimatorSet = animatorSet;
-        }
-
-        public void onAnimationCancel(Animator animation) {
-            if (!mTerminated) {
-                // Listeners are already notified of the AnimatorSet canceling in cancel().
-                // The logic below only kicks in when animations end normally
-                if (mPlayingSet.size() == 0) {
-                    if (mListeners != null) {
-                        int numListeners = mListeners.size();
-                        for (int i = 0; i < numListeners; ++i) {
-                            mListeners.get(i).onAnimationCancel(mAnimatorSet);
-                        }
-                    }
-                }
-            }
-        }
-
-        public void onAnimationEnd(Animator animation) {
-            animation.removeListener(this);
-            mPlayingSet.remove(animation);
-            Node animNode = mAnimatorSet.mNodeMap.get(animation);
-            animNode.done = true;
-            if (!mTerminated) {
-                // Listeners are already notified of the AnimatorSet ending in cancel() or
-                // end(); the logic below only kicks in when animations end normally
-                ArrayList<Node> sortedNodes = mAnimatorSet.mSortedNodes;
-                boolean allDone = true;
-                int numSortedNodes = sortedNodes.size();
-                for (int i = 0; i < numSortedNodes; ++i) {
-                    if (!sortedNodes.get(i).done) {
-                        allDone = false;
-                        break;
-                    }
-                }
-                if (allDone) {
-                    // If this was the last child animation to end, then notify listeners that this
-                    // AnimatorSet has ended
-                    if (mListeners != null) {
-                        ArrayList<AnimatorListener> tmpListeners =
-                                (ArrayList<AnimatorListener>) mListeners.clone();
-                        int numListeners = tmpListeners.size();
-                        for (int i = 0; i < numListeners; ++i) {
-                            tmpListeners.get(i).onAnimationEnd(mAnimatorSet);
-                        }
-                    }
-                    mAnimatorSet.mStarted = false;
-                }
-            }
-        }
-
-        // Nothing to do
-        public void onAnimationRepeat(Animator animation) {
-        }
-
-        // Nothing to do
-        public void onAnimationStart(Animator animation) {
-        }
-
-    }
-
-    /**
      * This method sorts the current set of nodes, if needed. The sort is a simple
      * DependencyGraph sort, which goes like this:
      * - All nodes without dependencies become 'roots'
@@ -843,9 +685,97 @@ public final class AnimatorSet extends Animator {
     }
 
     /**
+     * This class is the mechanism by which animations are started based on events in other
+     * animations. If an animation has multiple dependencies on other animations, then
+     * all dependencies must be satisfied before the animation is started.
+     */
+    private static class DependencyListener implements AnimatorListener {
+
+        private AnimatorSet mAnimatorSet;
+
+        // The node upon which the dependency is based.
+        private Node mNode;
+
+        // The Dependency rule (WITH or AFTER) that the listener should wait for on
+        // the node
+        private int mRule;
+
+        public DependencyListener(AnimatorSet animatorSet, Node node, int rule) {
+            this.mAnimatorSet = animatorSet;
+            this.mNode = node;
+            this.mRule = rule;
+        }
+
+        /**
+         * Ignore cancel events for now. We may want to handle this eventually,
+         * to prevent follow-on animations from running when some dependency
+         * animation is canceled.
+         */
+        public void onAnimationCancel(Animator animation) {
+        }
+
+        /**
+         * An end event is received - see if this is an event we are listening for
+         */
+        public void onAnimationEnd(Animator animation) {
+            if (mRule == Dependency.AFTER) {
+                startIfReady(animation);
+            }
+        }
+
+        /**
+         * Ignore repeat events for now
+         */
+        public void onAnimationRepeat(Animator animation) {
+        }
+
+        /**
+         * A start event is received - see if this is an event we are listening for
+         */
+        public void onAnimationStart(Animator animation) {
+            if (mRule == Dependency.WITH) {
+                startIfReady(animation);
+            }
+        }
+
+        /**
+         * Check whether the event received is one that the node was waiting for.
+         * If so, mark it as complete and see whether it's time to start
+         * the animation.
+         *
+         * @param dependencyAnimation the animation that sent the event.
+         */
+        private void startIfReady(Animator dependencyAnimation) {
+            if (mAnimatorSet.mTerminated) {
+                // if the parent AnimatorSet was canceled, then don't start any dependent anims
+                return;
+            }
+            Dependency dependencyToRemove = null;
+            int numDependencies = mNode.tmpDependencies.size();
+            for (int i = 0; i < numDependencies; ++i) {
+                Dependency dependency = mNode.tmpDependencies.get(i);
+                if (dependency.rule == mRule &&
+                        dependency.node.animation == dependencyAnimation) {
+                    // rule fired - remove the dependency and listener and check to
+                    // see whether it's time to start the animation
+                    dependencyToRemove = dependency;
+                    dependencyAnimation.removeListener(this);
+                    break;
+                }
+            }
+            mNode.tmpDependencies.remove(dependencyToRemove);
+            if (mNode.tmpDependencies.size() == 0) {
+                // all dependencies satisfied: start the animation
+                mNode.animation.start();
+                mAnimatorSet.mPlayingSet.add(mNode.animation);
+            }
+        }
+
+    }
+
+    /**
      * Dependency holds information about the node that some other node is
      * dependent upon and the nature of that dependency.
-     *
      */
     private static class Dependency {
         static final int WITH = 0; // dependent node must start with this dependency node
@@ -873,10 +803,10 @@ public final class AnimatorSet extends Animator {
         public Animator animation;
 
         /**
-         *  These are the dependencies that this node's animation has on other
-         *  nodes. For example, if this node's animation should begin with some
-         *  other animation ends, then there will be an item in this node's
-         *  dependencies list for that other animation's node.
+         * These are the dependencies that this node's animation has on other
+         * nodes. For example, if this node's animation should begin with some
+         * other animation ends, then there will be an item in this node's
+         * dependencies list for that other animation's node.
          */
         public ArrayList<Dependency> dependencies = null;
 
@@ -925,6 +855,7 @@ public final class AnimatorSet extends Animator {
         /**
          * Add a dependency to this Node. The dependency includes information about the
          * node that this node is dependency upon and the nature of the dependency.
+         *
          * @param dependency
          */
         public void addDependency(Dependency dependency) {
@@ -950,9 +881,75 @@ public final class AnimatorSet extends Animator {
                 node.animation = animation.clone();
                 return node;
             } catch (CloneNotSupportedException e) {
-               throw new AssertionError();
+                throw new AssertionError();
             }
         }
+    }
+
+    private class AnimatorSetListener implements AnimatorListener {
+
+        private AnimatorSet mAnimatorSet;
+
+        AnimatorSetListener(AnimatorSet animatorSet) {
+            mAnimatorSet = animatorSet;
+        }
+
+        public void onAnimationCancel(Animator animation) {
+            if (!mTerminated) {
+                // Listeners are already notified of the AnimatorSet canceling in cancel().
+                // The logic below only kicks in when animations end normally
+                if (mPlayingSet.size() == 0) {
+                    if (mListeners != null) {
+                        int numListeners = mListeners.size();
+                        for (int i = 0; i < numListeners; ++i) {
+                            mListeners.get(i).onAnimationCancel(mAnimatorSet);
+                        }
+                    }
+                }
+            }
+        }
+
+        public void onAnimationEnd(Animator animation) {
+            animation.removeListener(this);
+            mPlayingSet.remove(animation);
+            Node animNode = mAnimatorSet.mNodeMap.get(animation);
+            animNode.done = true;
+            if (!mTerminated) {
+                // Listeners are already notified of the AnimatorSet ending in cancel() or
+                // end(); the logic below only kicks in when animations end normally
+                ArrayList<Node> sortedNodes = mAnimatorSet.mSortedNodes;
+                boolean allDone = true;
+                int numSortedNodes = sortedNodes.size();
+                for (int i = 0; i < numSortedNodes; ++i) {
+                    if (!sortedNodes.get(i).done) {
+                        allDone = false;
+                        break;
+                    }
+                }
+                if (allDone) {
+                    // If this was the last child animation to end, then notify listeners that this
+                    // AnimatorSet has ended
+                    if (mListeners != null) {
+                        ArrayList<AnimatorListener> tmpListeners =
+                                (ArrayList<AnimatorListener>) mListeners.clone();
+                        int numListeners = tmpListeners.size();
+                        for (int i = 0; i < numListeners; ++i) {
+                            tmpListeners.get(i).onAnimationEnd(mAnimatorSet);
+                        }
+                    }
+                    mAnimatorSet.mStarted = false;
+                }
+            }
+        }
+
+        // Nothing to do
+        public void onAnimationRepeat(Animator animation) {
+        }
+
+        // Nothing to do
+        public void onAnimationStart(Animator animation) {
+        }
+
     }
 
     /**
@@ -1020,7 +1017,7 @@ public final class AnimatorSet extends Animator {
          * play() method is called.
          *
          * @param anim The animation that is the dependency for the other animations passed into
-         * the other methods of this Builder object.
+         *             the other methods of this Builder object.
          */
         Builder(Animator anim) {
             mCurrentNode = mNodeMap.get(anim);
@@ -1036,7 +1033,7 @@ public final class AnimatorSet extends Animator {
          * {@link AnimatorSet#play(Animator)} call that created this <code>Builder</code> object.
          *
          * @param anim The animation that will play when the animation supplied to the
-         * {@link AnimatorSet#play(Animator)} method starts.
+         *             {@link AnimatorSet#play(Animator)} method starts.
          */
         public Builder with(Animator anim) {
             Node node = mNodeMap.get(anim);
@@ -1056,7 +1053,7 @@ public final class AnimatorSet extends Animator {
          * ends.
          *
          * @param anim The animation that will play when the animation supplied to the
-         * {@link AnimatorSet#play(Animator)} method ends.
+         *             {@link AnimatorSet#play(Animator)} method ends.
          */
         public Builder before(Animator anim) {
             Node node = mNodeMap.get(anim);
@@ -1076,7 +1073,7 @@ public final class AnimatorSet extends Animator {
          * to start when the animation supplied in this method call ends.
          *
          * @param anim The animation whose end will cause the animation supplied to the
-         * {@link AnimatorSet#play(Animator)} method to play.
+         *             {@link AnimatorSet#play(Animator)} method to play.
          */
         public Builder after(Animator anim) {
             Node node = mNodeMap.get(anim);
@@ -1096,7 +1093,7 @@ public final class AnimatorSet extends Animator {
          * to play when the given amount of time elapses.
          *
          * @param delay The number of milliseconds that should elapse before the
-         * animation starts.
+         *              animation starts.
          */
         public Builder after(long delay) {
             // setup dummy ValueAnimator just to run the clock

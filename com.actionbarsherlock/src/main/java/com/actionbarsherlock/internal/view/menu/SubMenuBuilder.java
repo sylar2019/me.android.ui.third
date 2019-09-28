@@ -40,23 +40,23 @@ public class SubMenuBuilder extends MenuBuilder implements SubMenu {
     }
 
     @Override
-    public void setQwertyMode(boolean isQwerty) {
-        mParentMenu.setQwertyMode(isQwerty);
-    }
-
-    @Override
     public boolean isQwertyMode() {
         return mParentMenu.isQwertyMode();
     }
 
     @Override
-    public void setShortcutsVisible(boolean shortcutsVisible) {
-        mParentMenu.setShortcutsVisible(shortcutsVisible);
+    public void setQwertyMode(boolean isQwerty) {
+        mParentMenu.setQwertyMode(isQwerty);
     }
 
     @Override
     public boolean isShortcutsVisible() {
         return mParentMenu.isShortcutsVisible();
+    }
+
+    @Override
+    public void setShortcutsVisible(boolean shortcutsVisible) {
+        mParentMenu.setShortcutsVisible(shortcutsVisible);
     }
 
     public Menu getParentMenu() {

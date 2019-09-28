@@ -19,8 +19,6 @@ import android.content.Context;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 
-import java.lang.ref.WeakReference;
-
 import com.actionbarsherlock.internal.view.menu.MenuBuilder;
 import com.actionbarsherlock.internal.view.menu.MenuPopupHelper;
 import com.actionbarsherlock.internal.view.menu.SubMenuBuilder;
@@ -29,6 +27,8 @@ import com.actionbarsherlock.view.ActionMode;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
+
+import java.lang.ref.WeakReference;
 
 public class StandaloneActionMode extends ActionMode implements MenuBuilder.Callback {
     private Context mContext;
@@ -41,7 +41,7 @@ public class StandaloneActionMode extends ActionMode implements MenuBuilder.Call
     private MenuBuilder mMenu;
 
     public StandaloneActionMode(Context context, ActionBarContextView view,
-            ActionMode.Callback callback, boolean isFocusable) {
+                                ActionMode.Callback callback, boolean isFocusable) {
         mContext = context;
         mContextView = view;
         mCallback = callback;
@@ -49,32 +49,6 @@ public class StandaloneActionMode extends ActionMode implements MenuBuilder.Call
         mMenu = new MenuBuilder(context).setDefaultShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
         mMenu.setCallback(this);
         mFocusable = isFocusable;
-    }
-
-    @Override
-    public void setTitle(CharSequence title) {
-        mContextView.setTitle(title);
-    }
-
-    @Override
-    public void setSubtitle(CharSequence subtitle) {
-        mContextView.setSubtitle(subtitle);
-    }
-
-    @Override
-    public void setTitle(int resId) {
-        setTitle(mContext.getString(resId));
-    }
-
-    @Override
-    public void setSubtitle(int resId) {
-        setSubtitle(mContext.getString(resId));
-    }
-
-    @Override
-    public void setCustomView(View view) {
-        mContextView.setCustomView(view);
-        mCustomView = view != null ? new WeakReference<View>(view) : null;
     }
 
     @Override
@@ -104,13 +78,39 @@ public class StandaloneActionMode extends ActionMode implements MenuBuilder.Call
     }
 
     @Override
+    public void setTitle(CharSequence title) {
+        mContextView.setTitle(title);
+    }
+
+    @Override
+    public void setTitle(int resId) {
+        setTitle(mContext.getString(resId));
+    }
+
+    @Override
     public CharSequence getSubtitle() {
         return mContextView.getSubtitle();
     }
 
     @Override
+    public void setSubtitle(CharSequence subtitle) {
+        mContextView.setSubtitle(subtitle);
+    }
+
+    @Override
+    public void setSubtitle(int resId) {
+        setSubtitle(mContext.getString(resId));
+    }
+
+    @Override
     public View getCustomView() {
         return mCustomView != null ? mCustomView.get() : null;
+    }
+
+    @Override
+    public void setCustomView(View view) {
+        mContextView.setCustomView(view);
+        mCustomView = view != null ? new WeakReference<View>(view) : null;
     }
 
     @Override

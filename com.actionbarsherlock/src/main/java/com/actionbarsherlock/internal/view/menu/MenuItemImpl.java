@@ -35,12 +35,24 @@ import com.actionbarsherlock.view.SubMenu;
  * @hide
  */
 public final class MenuItemImpl implements MenuItem {
+    /**
+     * Used for the icon resource ID if this item does not have an icon
+     */
+    static final int NO_ICON = 0;
     private static final String TAG = "MenuItemImpl";
-
     private static final int SHOW_AS_ACTION_MASK = SHOW_AS_ACTION_NEVER |
             SHOW_AS_ACTION_IF_ROOM |
             SHOW_AS_ACTION_ALWAYS;
-
+    private static final int CHECKABLE = 0x00000001;
+    private static final int CHECKED = 0x00000002;
+    private static final int EXCLUSIVE = 0x00000004;
+    private static final int HIDDEN = 0x00000008;
+    private static final int ENABLED = 0x00000010;
+    private static final int IS_ACTION = 0x00000020;
+    private static String sPrependShortcutLabel;
+    private static String sEnterShortcutLabel;
+    private static String sDeleteShortcutLabel;
+    private static String sSpaceShortcutLabel;
     private final int mId;
     private final int mGroup;
     private final int mCategoryOrder;
@@ -50,8 +62,9 @@ public final class MenuItemImpl implements MenuItem {
     private Intent mIntent;
     private char mShortcutNumericChar;
     private char mShortcutAlphabeticChar;
-
-    /** The icon's drawable which is only created as needed */
+    /**
+     * The icon's drawable which is only created as needed
+     */
     private Drawable mIconDrawable;
     /**
      * The icon's resource ID which is used to get the Drawable when it is
@@ -59,59 +72,43 @@ public final class MenuItemImpl implements MenuItem {
      * needed).
      */
     private int mIconResId = NO_ICON;
-
-    /** The menu to which this item belongs */
+    /**
+     * The menu to which this item belongs
+     */
     private MenuBuilder mMenu;
-    /** If this item should launch a sub menu, this is the sub menu to launch */
+    /**
+     * If this item should launch a sub menu, this is the sub menu to launch
+     */
     private SubMenuBuilder mSubMenu;
-
     private Runnable mItemCallback;
     private MenuItem.OnMenuItemClickListener mClickListener;
-
     private int mFlags = ENABLED;
-    private static final int CHECKABLE      = 0x00000001;
-    private static final int CHECKED        = 0x00000002;
-    private static final int EXCLUSIVE      = 0x00000004;
-    private static final int HIDDEN         = 0x00000008;
-    private static final int ENABLED        = 0x00000010;
-    private static final int IS_ACTION      = 0x00000020;
-
     private int mShowAsAction = SHOW_AS_ACTION_NEVER;
-
     private View mActionView;
     private ActionProvider mActionProvider;
     private OnActionExpandListener mOnActionExpandListener;
     private boolean mIsActionViewExpanded = false;
-
-    /** Used for the icon resource ID if this item does not have an icon */
-    static final int NO_ICON = 0;
-
     /**
      * Current use case is for context menu: Extra information linked to the
      * View that added this item to the context menu.
      */
     private ContextMenuInfo mMenuInfo;
 
-    private static String sPrependShortcutLabel;
-    private static String sEnterShortcutLabel;
-    private static String sDeleteShortcutLabel;
-    private static String sSpaceShortcutLabel;
-
 
     /**
      * Instantiates this menu item.
      *
      * @param menu
-     * @param group Item ordering grouping control. The item will be added after
-     *            all other items whose order is <= this number, and before any
-     *            that are larger than it. This can also be used to define
-     *            groups of items for batch state changes. Normally use 0.
-     * @param id Unique item ID. Use 0 if you do not need a unique ID.
+     * @param group         Item ordering grouping control. The item will be added after
+     *                      all other items whose order is <= this number, and before any
+     *                      that are larger than it. This can also be used to define
+     *                      groups of items for batch state changes. Normally use 0.
+     * @param id            Unique item ID. Use 0 if you do not need a unique ID.
      * @param categoryOrder The ordering for this item.
-     * @param title The text to display for the item.
+     * @param title         The text to display for the item.
      */
     MenuItemImpl(MenuBuilder menu, int group, int id, int categoryOrder, int ordering,
-            CharSequence title, int showAsAction) {
+                 CharSequence title, int showAsAction) {
 
         /* TODO if (sPrependShortcutLabel == null) {
             // This is instantiated from the UI thread, so no chance of sync issues
@@ -141,7 +138,7 @@ public final class MenuItemImpl implements MenuItem {
      */
     public boolean invoke() {
         if (mClickListener != null &&
-            mClickListener.onMenuItemClick(this)) {
+                mClickListener.onMenuItemClick(this)) {
             return true;
         }
 
@@ -267,8 +264,8 @@ public final class MenuItemImpl implements MenuItem {
 
     /**
      * @return The label to show for the shortcut. This includes the chording
-     *         key (for example 'Menu+a'). Also, any non-human readable
-     *         characters should be human readable (for example 'Menu+enter').
+     * key (for example 'Menu+a'). Also, any non-human readable
+     * characters should be human readable (for example 'Menu+enter').
      */
     String getShortcutLabel() {
 
@@ -302,8 +299,8 @@ public final class MenuItemImpl implements MenuItem {
 
     /**
      * @return Whether this menu item should be showing shortcuts (depends on
-     *         whether the menu should show shortcuts and whether this item has
-     *         a shortcut defined)
+     * whether the menu should show shortcuts and whether this item has
+     * a shortcut defined)
      */
     boolean shouldShowShortcut() {
         // Show shortcuts if the menu is supposed to show shortcuts AND this item has a shortcut
@@ -314,14 +311,14 @@ public final class MenuItemImpl implements MenuItem {
         return mSubMenu;
     }
 
-    public boolean hasSubMenu() {
-        return mSubMenu != null;
-    }
-
     void setSubMenu(SubMenuBuilder subMenu) {
         mSubMenu = subMenu;
 
         subMenu.setHeaderTitle(getTitle());
+    }
+
+    public boolean hasSubMenu() {
+        return mSubMenu != null;
     }
 
     @ViewDebug.CapturedViewProperty
@@ -334,7 +331,7 @@ public final class MenuItemImpl implements MenuItem {
      *
      * @param itemView The ItemView that is receiving the title
      * @return Either the title or condensed title based on what the ItemView
-     *         prefers
+     * prefers
      */
     CharSequence getTitleForItemView(MenuView.ItemView itemView) {
         return ((itemView != null) && itemView.prefersCondensedTitle())
@@ -419,12 +416,12 @@ public final class MenuItemImpl implements MenuItem {
         return this;
     }
 
-    public void setExclusiveCheckable(boolean exclusive) {
-        mFlags = (mFlags & ~EXCLUSIVE) | (exclusive ? EXCLUSIVE : 0);
-    }
-
     public boolean isExclusiveCheckable() {
         return (mFlags & EXCLUSIVE) != 0;
+    }
+
+    public void setExclusiveCheckable(boolean exclusive) {
+        mFlags = (mFlags & ~EXCLUSIVE) | (exclusive ? EXCLUSIVE : 0);
     }
 
     public boolean isChecked() {
@@ -479,7 +476,7 @@ public final class MenuItemImpl implements MenuItem {
         return this;
     }
 
-   public MenuItem setOnMenuItemClickListener(MenuItem.OnMenuItemClickListener clickListener) {
+    public MenuItem setOnMenuItemClickListener(MenuItem.OnMenuItemClickListener clickListener) {
         mClickListener = clickListener;
         return this;
     }
@@ -489,12 +486,12 @@ public final class MenuItemImpl implements MenuItem {
         return mTitle.toString();
     }
 
-    void setMenuInfo(ContextMenuInfo menuInfo) {
-        mMenuInfo = menuInfo;
-    }
-
     public ContextMenuInfo getMenuInfo() {
         return mMenuInfo;
+    }
+
+    void setMenuInfo(ContextMenuInfo menuInfo) {
+        mMenuInfo = menuInfo;
     }
 
     public void actionFormatChanged() {
@@ -636,12 +633,12 @@ public final class MenuItemImpl implements MenuItem {
         return (mShowAsAction & SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW) != 0 && mActionView != null;
     }
 
+    public boolean isActionViewExpanded() {
+        return mIsActionViewExpanded;
+    }
+
     public void setActionViewExpanded(boolean isExpanded) {
         mIsActionViewExpanded = isExpanded;
         mMenu.onItemsChanged(false);
-    }
-
-    public boolean isActionViewExpanded() {
-        return mIsActionViewExpanded;
     }
 }

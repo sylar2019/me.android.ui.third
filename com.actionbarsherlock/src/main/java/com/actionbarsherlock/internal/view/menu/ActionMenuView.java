@@ -25,18 +25,17 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.LinearLayout;
+
 import com.actionbarsherlock.internal.widget.IcsLinearLayout;
 
 /**
  * @hide
  */
 public class ActionMenuView extends IcsLinearLayout implements MenuBuilder.ItemInvoker, MenuView {
-    //UNUSED private static final String TAG = "ActionMenuView";
-    private static final boolean IS_FROYO = Build.VERSION.SDK_INT >= Build.VERSION_CODES.FROYO;
-
     static final int MIN_CELL_SIZE = 56; // dips
     static final int GENERATED_ITEM_PADDING = 4; // dips
-
+    //UNUSED private static final String TAG = "ActionMenuView";
+    private static final boolean IS_FROYO = Build.VERSION.SDK_INT >= Build.VERSION_CODES.FROYO;
     private MenuBuilder mMenu;
 
     private boolean mReserveOverflow;
@@ -59,6 +58,51 @@ public class ActionMenuView extends IcsLinearLayout implements MenuBuilder.ItemI
         final float density = context.getResources().getDisplayMetrics().density;
         mMinCellSize = (int) (MIN_CELL_SIZE * density);
         mGeneratedItemPadding = (int) (GENERATED_ITEM_PADDING * density);
+    }
+
+    /**
+     * Measure a child view to fit within cell-based formatting. The child's width
+     * will be measured to a whole multiple of cellSize.
+     *
+     * <p>Sets the expandable and cellsUsed fields of LayoutParams.
+     *
+     * @param child                   Child to measure
+     * @param cellSize                Size of one cell
+     * @param cellsRemaining          Number of cells remaining that this view can expand to fill
+     * @param parentHeightMeasureSpec MeasureSpec used by the parent view
+     * @param parentHeightPadding     Padding present in the parent view
+     * @return Number of cells this child was measured to occupy
+     */
+    static int measureChildForCells(View child, int cellSize, int cellsRemaining,
+                                    int parentHeightMeasureSpec, int parentHeightPadding) {
+        final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+
+        final int childHeightSize = MeasureSpec.getSize(parentHeightMeasureSpec) -
+                parentHeightPadding;
+        final int childHeightMode = MeasureSpec.getMode(parentHeightMeasureSpec);
+        final int childHeightSpec = MeasureSpec.makeMeasureSpec(childHeightSize, childHeightMode);
+
+        int cellsUsed = 0;
+        if (cellsRemaining > 0) {
+            final int childWidthSpec = MeasureSpec.makeMeasureSpec(
+                    cellSize * cellsRemaining, MeasureSpec.AT_MOST);
+            child.measure(childWidthSpec, childHeightSpec);
+
+            final int measuredWidth = child.getMeasuredWidth();
+            cellsUsed = measuredWidth / cellSize;
+            if (measuredWidth % cellSize != 0) cellsUsed++;
+        }
+
+        final ActionMenuItemView itemView = child instanceof ActionMenuItemView ?
+                (ActionMenuItemView) child : null;
+        final boolean expandable = !lp.isOverflowButton && itemView != null && itemView.hasText();
+        lp.expandable = expandable;
+
+        lp.cellsUsed = cellsUsed;
+        final int targetWidth = cellsUsed * cellSize;
+        child.measure(MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
+                childHeightSpec);
+        return cellsUsed;
     }
 
     public void setPresenter(ActionMenuPresenter presenter) {
@@ -331,51 +375,6 @@ public class ActionMenuView extends IcsLinearLayout implements MenuBuilder.ItemI
         //UNUSED mMeasuredExtraWidth = cellsRemaining * cellSize;
     }
 
-    /**
-     * Measure a child view to fit within cell-based formatting. The child's width
-     * will be measured to a whole multiple of cellSize.
-     *
-     * <p>Sets the expandable and cellsUsed fields of LayoutParams.
-     *
-     * @param child Child to measure
-     * @param cellSize Size of one cell
-     * @param cellsRemaining Number of cells remaining that this view can expand to fill
-     * @param parentHeightMeasureSpec MeasureSpec used by the parent view
-     * @param parentHeightPadding Padding present in the parent view
-     * @return Number of cells this child was measured to occupy
-     */
-    static int measureChildForCells(View child, int cellSize, int cellsRemaining,
-            int parentHeightMeasureSpec, int parentHeightPadding) {
-        final LayoutParams lp = (LayoutParams) child.getLayoutParams();
-
-        final int childHeightSize = MeasureSpec.getSize(parentHeightMeasureSpec) -
-                parentHeightPadding;
-        final int childHeightMode = MeasureSpec.getMode(parentHeightMeasureSpec);
-        final int childHeightSpec = MeasureSpec.makeMeasureSpec(childHeightSize, childHeightMode);
-
-        int cellsUsed = 0;
-        if (cellsRemaining > 0) {
-            final int childWidthSpec = MeasureSpec.makeMeasureSpec(
-                    cellSize * cellsRemaining, MeasureSpec.AT_MOST);
-            child.measure(childWidthSpec, childHeightSpec);
-
-            final int measuredWidth = child.getMeasuredWidth();
-            cellsUsed = measuredWidth / cellSize;
-            if (measuredWidth % cellSize != 0) cellsUsed++;
-        }
-
-        final ActionMenuItemView itemView = child instanceof ActionMenuItemView ?
-                (ActionMenuItemView) child : null;
-        final boolean expandable = !lp.isOverflowButton && itemView != null && itemView.hasText();
-        lp.expandable = expandable;
-
-        lp.cellsUsed = cellsUsed;
-        final int targetWidth = cellsUsed * cellSize;
-        child.measure(MeasureSpec.makeMeasureSpec(targetWidth, MeasureSpec.EXACTLY),
-                childHeightSpec);
-        return cellsUsed;
-    }
-
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         if (!mFormatItems) {
@@ -418,7 +417,7 @@ public class ActionMenuView extends IcsLinearLayout implements MenuBuilder.ItemI
                 //UNUSED nonOverflowWidth += size;
                 widthRemaining -= size;
                 //if (hasDividerBeforeChildAt(i)) {
-                    //UNUSED nonOverflowWidth += dividerWidth;
+                //UNUSED nonOverflowWidth += dividerWidth;
                 //}
                 nonOverflowCount++;
             }
@@ -541,6 +540,7 @@ public class ActionMenuView extends IcsLinearLayout implements MenuBuilder.ItemI
 
     public interface ActionMenuChildView {
         public boolean needsDividerBefore();
+
         public boolean needsDividerAfter();
     }
 

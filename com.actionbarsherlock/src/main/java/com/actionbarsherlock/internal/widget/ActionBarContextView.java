@@ -46,9 +46,11 @@ import com.actionbarsherlock.view.ActionMode;
 public class ActionBarContextView extends AbsActionBarView implements AnimatorListener {
     //UNUSED private static final String TAG = "ActionBarContextView";
 
+    private static final int ANIMATE_IDLE = 0;
+    private static final int ANIMATE_IN = 1;
+    private static final int ANIMATE_OUT = 2;
     private CharSequence mTitle;
     private CharSequence mSubtitle;
-
     private NineLinearLayout mClose;
     private View mCustomView;
     private LinearLayout mTitleLayout;
@@ -57,14 +59,9 @@ public class ActionBarContextView extends AbsActionBarView implements AnimatorLi
     private int mTitleStyleRes;
     private int mSubtitleStyleRes;
     private Drawable mSplitBackground;
-
     private Animator mCurrentAnimation;
     private boolean mAnimateInOnLayout;
     private int mAnimationMode;
-
-    private static final int ANIMATE_IDLE = 0;
-    private static final int ANIMATE_IN = 1;
-    private static final int ANIMATE_OUT = 2;
 
     public ActionBarContextView(Context context) {
         this(context, null);
@@ -155,22 +152,22 @@ public class ActionBarContextView extends AbsActionBarView implements AnimatorLi
         requestLayout();
     }
 
+    public CharSequence getTitle() {
+        return mTitle;
+    }
+
     public void setTitle(CharSequence title) {
         mTitle = title;
         initTitle();
     }
 
+    public CharSequence getSubtitle() {
+        return mSubtitle;
+    }
+
     public void setSubtitle(CharSequence subtitle) {
         mSubtitle = subtitle;
         initTitle();
-    }
-
-    public CharSequence getTitle() {
-        return mTitle;
-    }
-
-    public CharSequence getSubtitle() {
-        return mSubtitle;
     }
 
     private void initTitle() {
@@ -203,7 +200,7 @@ public class ActionBarContextView extends AbsActionBarView implements AnimatorLi
     public void initForMode(final ActionMode mode) {
         if (mClose == null) {
             LayoutInflater inflater = LayoutInflater.from(mContext);
-            mClose = (NineLinearLayout)inflater.inflate(R.layout.abs__action_mode_close_item, this, false);
+            mClose = (NineLinearLayout) inflater.inflate(R.layout.abs__action_mode_close_item, this, false);
             addView(mClose);
         } else if (mClose.getParent() == null) {
             addView(mClose);

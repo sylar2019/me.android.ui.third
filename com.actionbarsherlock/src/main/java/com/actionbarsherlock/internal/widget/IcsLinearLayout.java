@@ -19,15 +19,6 @@ import com.actionbarsherlock.internal.nineoldandroids.widget.NineLinearLayout;
  * {@link android.widget.FrameLayout} so it can receive the margin.
  */
 public class IcsLinearLayout extends NineLinearLayout {
-    private static final int[] R_styleable_LinearLayout = new int[] {
-        /* 0 */ android.R.attr.divider,
-        /* 2 */ android.R.attr.showDividers,
-        /* 3 */ android.R.attr.dividerPadding,
-    };
-    private static final int LinearLayout_divider = 0;
-    private static final int LinearLayout_showDividers = 1;
-    private static final int LinearLayout_dividerPadding = 2;
-
     /**
      * Don't show any dividers.
      */
@@ -44,8 +35,14 @@ public class IcsLinearLayout extends NineLinearLayout {
      * Show a divider at the end of the group.
      */
     public static final int SHOW_DIVIDER_END = 4;
-
-
+    private static final int[] R_styleable_LinearLayout = new int[]{
+            /* 0 */ android.R.attr.divider,
+            /* 2 */ android.R.attr.showDividers,
+            /* 3 */ android.R.attr.dividerPadding,
+    };
+    private static final int LinearLayout_divider = 0;
+    private static final int LinearLayout_showDividers = 1;
+    private static final int LinearLayout_dividerPadding = 2;
     private Drawable mDivider;
     private int mDividerWidth;
     private int mDividerHeight;
@@ -65,6 +62,14 @@ public class IcsLinearLayout extends NineLinearLayout {
     }
 
     /**
+     * @return A flag set indicating how dividers should be shown around items.
+     * @see #setShowDividers(int)
+     */
+    public int getShowDividers() {
+        return mShowDividers;
+    }
+
+    /**
      * Set how dividers should be shown between items in this layout
      *
      * @param showDividers One or more of {@link #SHOW_DIVIDER_BEGINNING},
@@ -80,15 +85,8 @@ public class IcsLinearLayout extends NineLinearLayout {
     }
 
     /**
-     * @return A flag set indicating how dividers should be shown around items.
-     * @see #setShowDividers(int)
-     */
-    public int getShowDividers() {
-        return mShowDividers;
-    }
-
-    /**
      * Set a drawable to be used as a divider between items.
+     *
      * @param divider Drawable that will divide each item.
      * @see #setShowDividers(int)
      */
@@ -115,19 +113,6 @@ public class IcsLinearLayout extends NineLinearLayout {
     }
 
     /**
-     * Set padding displayed on both ends of dividers.
-     *
-     * @param padding Padding value in pixels that will be applied to each end
-     *
-     * @see #setShowDividers(int)
-     * @see #setDividerDrawable(Drawable)
-     * @see #getDividerPadding()
-     */
-    public void setDividerPadding(int padding) {
-        mDividerPadding = padding;
-    }
-
-    /**
      * Get the padding size used to inset dividers in pixels
      *
      * @see #setShowDividers(int)
@@ -136,6 +121,18 @@ public class IcsLinearLayout extends NineLinearLayout {
      */
     public int getDividerPadding() {
         return mDividerPadding;
+    }
+
+    /**
+     * Set padding displayed on both ends of dividers.
+     *
+     * @param padding Padding value in pixels that will be applied to each end
+     * @see #setShowDividers(int)
+     * @see #setDividerDrawable(Drawable)
+     * @see #getDividerPadding()
+     */
+    public void setDividerPadding(int padding) {
+        mDividerPadding = padding;
     }
 
     /**

@@ -1,11 +1,10 @@
-
 package com.actionbarsherlock.internal.widget;
 
 import android.content.Context;
-import android.util.Log;
-import android.view.Gravity;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
+import android.util.Log;
+import android.view.Gravity;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -15,6 +14,10 @@ public class IcsToast extends Toast {
     public static final int LENGTH_LONG = Toast.LENGTH_LONG;
     public static final int LENGTH_SHORT = Toast.LENGTH_SHORT;
     private static final String TAG = "Toast";
+
+    public IcsToast(Context context) {
+        super(context);
+    }
 
     public static Toast makeText(Context context, CharSequence s, int duration) {
         if (VERSION.SDK_INT >= VERSION_CODES.ICE_CREAM_SANDWICH) {
@@ -36,10 +39,6 @@ public class IcsToast extends Toast {
 
     public static Toast makeText(Context context, int resId, int duration) {
         return makeText(context, context.getResources().getString(resId), duration);
-    }
-
-    public IcsToast(Context context) {
-        super(context);
     }
 
     @Override

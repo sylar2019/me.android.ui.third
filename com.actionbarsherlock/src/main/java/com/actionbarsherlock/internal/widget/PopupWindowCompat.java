@@ -1,7 +1,4 @@
-
 package com.actionbarsherlock.internal.widget;
-
-import java.lang.reflect.Field;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -9,6 +6,8 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.ViewTreeObserver.OnScrollChangedListener;
 import android.widget.PopupWindow;
+
+import java.lang.reflect.Field;
 
 /**
  * Works around bugs in the handling of {@link ViewTreeObserver} by
@@ -39,6 +38,13 @@ import android.widget.PopupWindow;
 public class PopupWindowCompat extends PopupWindow {
 
     private static final Field superListenerField;
+    private static final OnScrollChangedListener NOP = new OnScrollChangedListener() {
+        @Override
+        public void onScrollChanged() {
+            /* do nothing */
+        }
+    };
+
     static {
         Field f = null;
         try {
@@ -49,13 +55,6 @@ public class PopupWindowCompat extends PopupWindow {
         }
         superListenerField = f;
     }
-
-    private static final OnScrollChangedListener NOP = new OnScrollChangedListener() {
-        @Override
-        public void onScrollChanged() {
-            /* do nothing */
-        }
-    };
 
     private OnScrollChangedListener mSuperScrollListener;
     private ViewTreeObserver mViewTreeObserver;

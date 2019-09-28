@@ -16,8 +16,6 @@
 
 package com.actionbarsherlock.internal.app;
 
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
@@ -35,13 +33,14 @@ import android.view.View;
 import android.view.Window;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.SpinnerAdapter;
+
 import com.actionbarsherlock.R;
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.internal.nineoldandroids.animation.Animator;
+import com.actionbarsherlock.internal.nineoldandroids.animation.Animator.AnimatorListener;
 import com.actionbarsherlock.internal.nineoldandroids.animation.AnimatorListenerAdapter;
 import com.actionbarsherlock.internal.nineoldandroids.animation.AnimatorSet;
 import com.actionbarsherlock.internal.nineoldandroids.animation.ObjectAnimator;
-import com.actionbarsherlock.internal.nineoldandroids.animation.Animator.AnimatorListener;
 import com.actionbarsherlock.internal.nineoldandroids.widget.NineFrameLayout;
 import com.actionbarsherlock.internal.view.menu.MenuBuilder;
 import com.actionbarsherlock.internal.view.menu.MenuPopupHelper;
@@ -54,6 +53,10 @@ import com.actionbarsherlock.view.ActionMode;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+
 import static com.actionbarsherlock.internal.ResourcesCompat.getResources_getBoolean;
 
 /**
@@ -66,47 +69,34 @@ import static com.actionbarsherlock.internal.ResourcesCompat.getResources_getBoo
 public class ActionBarImpl extends ActionBar {
     //UNUSED private static final String TAG = "ActionBarImpl";
 
+    private static final int CONTEXT_DISPLAY_NORMAL = 0;
+    private static final int CONTEXT_DISPLAY_SPLIT = 1;
+    private static final int INVALID_POSITION = -1;
+    //UNUSED private Dialog mDialog;
+    final Handler mHandler = new Handler();
+    ActionModeImpl mActionMode;
+    ActionMode mDeferredDestroyActionMode;
+    ActionMode.Callback mDeferredModeDestroyCallback;
+    Runnable mTabSelector;
+    boolean mWasHiddenBeforeMode;
     private Context mContext;
     private Context mThemedContext;
     private Activity mActivity;
-    //UNUSED private Dialog mDialog;
-
     private ActionBarContainer mContainerView;
     private ActionBarView mActionView;
     private ActionBarContextView mContextView;
     private ActionBarContainer mSplitView;
     private NineFrameLayout mContentView;
     private ScrollingTabContainerView mTabScrollView;
-
     private ArrayList<TabImpl> mTabs = new ArrayList<TabImpl>();
-
     private TabImpl mSelectedTab;
     private int mSavedTabPosition = INVALID_POSITION;
-
-    ActionModeImpl mActionMode;
-    ActionMode mDeferredDestroyActionMode;
-    ActionMode.Callback mDeferredModeDestroyCallback;
-
     private boolean mLastMenuVisibility;
     private ArrayList<OnMenuVisibilityListener> mMenuVisibilityListeners =
             new ArrayList<OnMenuVisibilityListener>();
-
-    private static final int CONTEXT_DISPLAY_NORMAL = 0;
-    private static final int CONTEXT_DISPLAY_SPLIT = 1;
-
-    private static final int INVALID_POSITION = -1;
-
     private int mContextDisplayMode;
     private boolean mHasEmbeddedTabs;
-
-    final Handler mHandler = new Handler();
-    Runnable mTabSelector;
-
     private Animator mCurrentShowAnim;
-    private Animator mCurrentModeAnim;
-    private boolean mShowHideAnimationEnabled;
-    boolean mWasHiddenBeforeMode;
-
     final AnimatorListener mHideListener = new AnimatorListenerAdapter() {
         @Override
         public void onAnimationEnd(Animator animation) {
@@ -123,7 +113,6 @@ public class ActionBarImpl extends ActionBar {
             completeDeferredDestroyActionMode();
         }
     };
-
     final AnimatorListener mShowListener = new AnimatorListenerAdapter() {
         @Override
         public void onAnimationEnd(Animator animation) {
@@ -131,6 +120,8 @@ public class ActionBarImpl extends ActionBar {
             mContainerView.requestLayout();
         }
     };
+    private Animator mCurrentModeAnim;
+    private boolean mShowHideAnimationEnabled;
 
     public ActionBarImpl(Activity activity, int features) {
         mActivity = activity;
@@ -140,7 +131,7 @@ public class ActionBarImpl extends ActionBar {
 
         //window.hasFeature() workaround for pre-3.0
         if ((features & (1 << Window.FEATURE_ACTION_BAR_OVERLAY)) == 0) {
-            mContentView = (NineFrameLayout)decor.findViewById(android.R.id.content);
+            mContentView = (NineFrameLayout) decor.findViewById(android.R.id.content);
         }
     }
 
@@ -272,11 +263,6 @@ public class ActionBarImpl extends ActionBar {
     }
 
     @Override
-    public void setCustomView(int resId) {
-        setCustomView(LayoutInflater.from(getThemedContext()).inflate(resId, mActionView, false));
-    }
-
-    @Override
     public void setDisplayUseLogoEnabled(boolean useLogo) {
         setDisplayOptions(useLogo ? DISPLAY_USE_LOGO : 0, DISPLAY_USE_LOGO);
     }
@@ -306,27 +292,17 @@ public class ActionBarImpl extends ActionBar {
         mActionView.setHomeButtonEnabled(enable);
     }
 
-    @Override
-    public void setTitle(int resId) {
-        setTitle(mContext.getString(resId));
-    }
-
-    @Override
-    public void setSubtitle(int resId) {
-        setSubtitle(mContext.getString(resId));
-    }
-
     public void setSelectedNavigationItem(int position) {
         switch (mActionView.getNavigationMode()) {
-        case NAVIGATION_MODE_TABS:
-            selectTab(mTabs.get(position));
-            break;
-        case NAVIGATION_MODE_LIST:
-            mActionView.setDropdownSelectedPosition(position);
-            break;
-        default:
-            throw new IllegalStateException(
-                    "setSelectedNavigationItem not valid for current navigation mode");
+            case NAVIGATION_MODE_TABS:
+                selectTab(mTabs.get(position));
+                break;
+            case NAVIGATION_MODE_LIST:
+                mActionView.setDropdownSelectedPosition(position);
+                break;
+            default:
+                throw new IllegalStateException(
+                        "setSelectedNavigationItem not valid for current navigation mode");
         }
     }
 
@@ -343,18 +319,6 @@ public class ActionBarImpl extends ActionBar {
             mTabScrollView.removeAllTabs();
         }
         mSavedTabPosition = INVALID_POSITION;
-    }
-
-    public void setTitle(CharSequence title) {
-        mActionView.setTitle(title);
-    }
-
-    public void setSubtitle(CharSequence subtitle) {
-        mActionView.setSubtitle(subtitle);
-    }
-
-    public void setDisplayOptions(int options) {
-        mActionView.setDisplayOptions(options);
     }
 
     public void setDisplayOptions(int options, int mask) {
@@ -380,20 +344,76 @@ public class ActionBarImpl extends ActionBar {
         return mActionView.getCustomNavigationView();
     }
 
+    @Override
+    public void setCustomView(int resId) {
+        setCustomView(LayoutInflater.from(getThemedContext()).inflate(resId, mActionView, false));
+    }
+
+    @Override
+    public void setCustomView(View view) {
+        mActionView.setCustomNavigationView(view);
+    }
+
     public CharSequence getTitle() {
         return mActionView.getTitle();
+    }
+
+    @Override
+    public void setTitle(int resId) {
+        setTitle(mContext.getString(resId));
+    }
+
+    public void setTitle(CharSequence title) {
+        mActionView.setTitle(title);
     }
 
     public CharSequence getSubtitle() {
         return mActionView.getSubtitle();
     }
 
+    @Override
+    public void setSubtitle(int resId) {
+        setSubtitle(mContext.getString(resId));
+    }
+
+    public void setSubtitle(CharSequence subtitle) {
+        mActionView.setSubtitle(subtitle);
+    }
+
     public int getNavigationMode() {
         return mActionView.getNavigationMode();
     }
 
+    @Override
+    public void setNavigationMode(int mode) {
+        final int oldMode = mActionView.getNavigationMode();
+        switch (oldMode) {
+            case NAVIGATION_MODE_TABS:
+                mSavedTabPosition = getSelectedNavigationIndex();
+                selectTab(null);
+                mTabScrollView.setVisibility(View.GONE);
+                break;
+        }
+        mActionView.setNavigationMode(mode);
+        switch (mode) {
+            case NAVIGATION_MODE_TABS:
+                ensureTabsExist();
+                mTabScrollView.setVisibility(View.VISIBLE);
+                if (mSavedTabPosition != INVALID_POSITION) {
+                    setSelectedNavigationItem(mSavedTabPosition);
+                    mSavedTabPosition = INVALID_POSITION;
+                }
+                break;
+        }
+        mActionView.setCollapsable(mode == NAVIGATION_MODE_TABS && !mHasEmbeddedTabs);
+    }
+
     public int getDisplayOptions() {
         return mActionView.getDisplayOptions();
+    }
+
+    public void setDisplayOptions(int options) {
+        mActionView.setDisplayOptions(options);
     }
 
     public ActionMode startActionMode(ActionMode.Callback callback) {
@@ -512,7 +532,7 @@ public class ActionBarImpl extends ActionBar {
 
         FragmentTransaction trans = null;
         if (mActivity instanceof FragmentActivity) {
-            trans = ((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction()
+            trans = ((FragmentActivity) mActivity).getSupportFragmentManager().beginTransaction()
                     .disallowAddToBackStack();
         }
 
@@ -655,6 +675,73 @@ public class ActionBarImpl extends ActionBar {
         return mThemedContext;
     }
 
+    @Override
+    public void setCustomView(View view, LayoutParams layoutParams) {
+        view.setLayoutParams(layoutParams);
+        mActionView.setCustomNavigationView(view);
+    }
+
+    @Override
+    public void setListNavigationCallbacks(SpinnerAdapter adapter, OnNavigationListener callback) {
+        mActionView.setDropdownAdapter(adapter);
+        mActionView.setCallback(callback);
+    }
+
+    @Override
+    public int getSelectedNavigationIndex() {
+        switch (mActionView.getNavigationMode()) {
+            case NAVIGATION_MODE_TABS:
+                return mSelectedTab != null ? mSelectedTab.getPosition() : -1;
+            case NAVIGATION_MODE_LIST:
+                return mActionView.getDropdownSelectedPosition();
+            default:
+                return -1;
+        }
+    }
+
+    @Override
+    public int getNavigationItemCount() {
+        switch (mActionView.getNavigationMode()) {
+            case NAVIGATION_MODE_TABS:
+                return mTabs.size();
+            case NAVIGATION_MODE_LIST:
+                SpinnerAdapter adapter = mActionView.getDropdownAdapter();
+                return adapter != null ? adapter.getCount() : 0;
+            default:
+                return 0;
+        }
+    }
+
+    @Override
+    public int getTabCount() {
+        return mTabs.size();
+    }
+
+    @Override
+    public Tab getTabAt(int index) {
+        return mTabs.get(index);
+    }
+
+    @Override
+    public void setIcon(int resId) {
+        mActionView.setIcon(resId);
+    }
+
+    @Override
+    public void setIcon(Drawable icon) {
+        mActionView.setIcon(icon);
+    }
+
+    @Override
+    public void setLogo(int resId) {
+        mActionView.setLogo(resId);
+    }
+
+    @Override
+    public void setLogo(Drawable logo) {
+        mActionView.setLogo(logo);
+    }
+
     /**
      * @hide
      */
@@ -731,14 +818,8 @@ public class ActionBarImpl extends ActionBar {
         }
 
         @Override
-        public void setCustomView(View view) {
-            mContextView.setCustomView(view);
-            mCustomView = new WeakReference<View>(view);
-        }
-
-        @Override
-        public void setSubtitle(CharSequence subtitle) {
-            mContextView.setSubtitle(subtitle);
+        public CharSequence getTitle() {
+            return mContextView.getTitle();
         }
 
         @Override
@@ -752,23 +833,29 @@ public class ActionBarImpl extends ActionBar {
         }
 
         @Override
-        public void setSubtitle(int resId) {
-            setSubtitle(mContext.getResources().getString(resId));
-        }
-
-        @Override
-        public CharSequence getTitle() {
-            return mContextView.getTitle();
-        }
-
-        @Override
         public CharSequence getSubtitle() {
             return mContextView.getSubtitle();
         }
 
         @Override
+        public void setSubtitle(CharSequence subtitle) {
+            mContextView.setSubtitle(subtitle);
+        }
+
+        @Override
+        public void setSubtitle(int resId) {
+            setSubtitle(mContext.getResources().getString(resId));
+        }
+
+        @Override
         public View getCustomView() {
             return mCustomView != null ? mCustomView.get() : null;
+        }
+
+        @Override
+        public void setCustomView(View view) {
+            mContextView.setCustomView(view);
+            mCustomView = new WeakReference<View>(view);
         }
 
         public boolean onMenuItemSelected(MenuBuilder menu, MenuItem item) {
@@ -930,102 +1017,5 @@ public class ActionBarImpl extends ActionBar {
         public CharSequence getContentDescription() {
             return mContentDesc;
         }
-    }
-
-    @Override
-    public void setCustomView(View view) {
-        mActionView.setCustomNavigationView(view);
-    }
-
-    @Override
-    public void setCustomView(View view, LayoutParams layoutParams) {
-        view.setLayoutParams(layoutParams);
-        mActionView.setCustomNavigationView(view);
-    }
-
-    @Override
-    public void setListNavigationCallbacks(SpinnerAdapter adapter, OnNavigationListener callback) {
-        mActionView.setDropdownAdapter(adapter);
-        mActionView.setCallback(callback);
-    }
-
-    @Override
-    public int getSelectedNavigationIndex() {
-        switch (mActionView.getNavigationMode()) {
-            case NAVIGATION_MODE_TABS:
-                return mSelectedTab != null ? mSelectedTab.getPosition() : -1;
-            case NAVIGATION_MODE_LIST:
-                return mActionView.getDropdownSelectedPosition();
-            default:
-                return -1;
-        }
-    }
-
-    @Override
-    public int getNavigationItemCount() {
-        switch (mActionView.getNavigationMode()) {
-            case NAVIGATION_MODE_TABS:
-                return mTabs.size();
-            case NAVIGATION_MODE_LIST:
-                SpinnerAdapter adapter = mActionView.getDropdownAdapter();
-                return adapter != null ? adapter.getCount() : 0;
-            default:
-                return 0;
-        }
-    }
-
-    @Override
-    public int getTabCount() {
-        return mTabs.size();
-    }
-
-    @Override
-    public void setNavigationMode(int mode) {
-        final int oldMode = mActionView.getNavigationMode();
-        switch (oldMode) {
-            case NAVIGATION_MODE_TABS:
-                mSavedTabPosition = getSelectedNavigationIndex();
-                selectTab(null);
-                mTabScrollView.setVisibility(View.GONE);
-                break;
-        }
-        mActionView.setNavigationMode(mode);
-        switch (mode) {
-            case NAVIGATION_MODE_TABS:
-                ensureTabsExist();
-                mTabScrollView.setVisibility(View.VISIBLE);
-                if (mSavedTabPosition != INVALID_POSITION) {
-                    setSelectedNavigationItem(mSavedTabPosition);
-                    mSavedTabPosition = INVALID_POSITION;
-                }
-                break;
-        }
-        mActionView.setCollapsable(mode == NAVIGATION_MODE_TABS && !mHasEmbeddedTabs);
-    }
-
-    @Override
-    public Tab getTabAt(int index) {
-        return mTabs.get(index);
-    }
-
-
-    @Override
-    public void setIcon(int resId) {
-        mActionView.setIcon(resId);
-    }
-
-    @Override
-    public void setIcon(Drawable icon) {
-        mActionView.setIcon(icon);
-    }
-
-    @Override
-    public void setLogo(int resId) {
-        mActionView.setLogo(resId);
-    }
-
-    @Override
-    public void setLogo(Drawable logo) {
-        mActionView.setLogo(logo);
     }
 }

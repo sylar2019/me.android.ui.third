@@ -16,12 +16,6 @@
 
 package com.actionbarsherlock.widget;
 
-import android.os.Build;
-import com.actionbarsherlock.R;
-import com.actionbarsherlock.internal.widget.IcsLinearLayout;
-import com.actionbarsherlock.internal.widget.IcsListPopupWindow;
-import com.actionbarsherlock.view.ActionProvider;
-import com.actionbarsherlock.widget.ActivityChooserModel.ActivityChooserModelClient;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -30,6 +24,7 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.database.DataSetObserver;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -42,6 +37,12 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
+
+import com.actionbarsherlock.R;
+import com.actionbarsherlock.internal.widget.IcsLinearLayout;
+import com.actionbarsherlock.internal.widget.IcsListPopupWindow;
+import com.actionbarsherlock.view.ActionProvider;
+import com.actionbarsherlock.widget.ActivityChooserModel.ActivityChooserModelClient;
 
 /**
  * This class is a view for choosing an activity for handling a given {@link Intent}.
@@ -68,56 +69,43 @@ import android.widget.TextView;
  */
 class ActivityChooserView extends ViewGroup implements ActivityChooserModelClient {
 
+    private static final boolean IS_HONEYCOMB = Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB;
     /**
      * An adapter for displaying the activities in an {@link AdapterView}.
      */
     private final ActivityChooserViewAdapter mAdapter;
-
     /**
      * Implementation of various interfaces to avoid publishing them in the APIs.
      */
     private final Callbacks mCallbacks;
-
     /**
      * The content of this view.
      */
     private final IcsLinearLayout mActivityChooserContent;
-
     /**
      * Stores the background drawable to allow hiding and latter showing.
      */
     private final Drawable mActivityChooserContentBackground;
-
     /**
      * The expand activities action button;
      */
     private final FrameLayout mExpandActivityOverflowButton;
-
     /**
      * The image for the expand activities action button;
      */
     private final ImageView mExpandActivityOverflowButtonImage;
-
     /**
      * The default activities action button;
      */
     private final FrameLayout mDefaultActivityButton;
-
     /**
      * The image for the default activities action button;
      */
     private final ImageView mDefaultActivityButtonImage;
-
     /**
      * The maximal width of the list popup.
      */
     private final int mListPopupMaxWidth;
-
-    /**
-     * The ActionProvider hosting this view, if applicable.
-     */
-    ActionProvider mProvider;
-
     /**
      * Observer for the model data.
      */
@@ -128,13 +116,22 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
             super.onChanged();
             mAdapter.notifyDataSetChanged();
         }
+
         @Override
         public void onInvalidated() {
             super.onInvalidated();
             mAdapter.notifyDataSetInvalidated();
         }
     };
-
+    private final Context mContext;
+    /**
+     * The ActionProvider hosting this view, if applicable.
+     */
+    ActionProvider mProvider;
+    /**
+     * Popup window for showing the activity overflow list.
+     */
+    private IcsListPopupWindow mListPopupWindow;
     private final OnGlobalLayoutListener mOnGlobalLayoutListener = new OnGlobalLayoutListener() {
         @Override
         public void onGlobalLayout() {
@@ -150,38 +147,26 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
             }
         }
     };
-
-    /**
-     * Popup window for showing the activity overflow list.
-     */
-    private IcsListPopupWindow mListPopupWindow;
-
     /**
      * Listener for the dismissal of the popup/alert.
      */
     private PopupWindow.OnDismissListener mOnDismissListener;
-
     /**
      * Flag whether a default activity currently being selected.
      */
     private boolean mIsSelectingDefaultActivity;
-
     /**
      * The count of activities in the popup.
      */
     private int mInitialActivityCount = ActivityChooserViewAdapter.MAX_ACTIVITY_COUNT_DEFAULT;
-
     /**
      * Flag whether this view is attached to a window.
      */
     private boolean mIsAttachedToWindow;
-
     /**
      * String resource for formatting content description of the default target.
      */
     private int mDefaultActionButtonContentDescription;
-
-    private final Context mContext;
 
     /**
      * Create a new instance.
@@ -196,7 +181,7 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
      * Create a new instance.
      *
      * @param context The application environment.
-     * @param attrs A collection of attributes.
+     * @param attrs   A collection of attributes.
      */
     public ActivityChooserView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
@@ -205,8 +190,8 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
     /**
      * Create a new instance.
      *
-     * @param context The application environment.
-     * @param attrs A collection of attributes.
+     * @param context  The application environment.
+     * @param attrs    A collection of attributes.
      * @param defStyle The default style to apply to this view.
      */
     public ActivityChooserView(Context context, AttributeSet attrs, int defStyle) {
@@ -241,7 +226,7 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
         mExpandActivityOverflowButton = (FrameLayout) findViewById(R.id.abs__expand_activities_button);
         mExpandActivityOverflowButton.setOnClickListener(mCallbacks);
         mExpandActivityOverflowButtonImage =
-            (ImageView) mExpandActivityOverflowButton.findViewById(R.id.abs__image);
+                (ImageView) mExpandActivityOverflowButton.findViewById(R.id.abs__image);
         mExpandActivityOverflowButtonImage.setImageDrawable(expandActivityOverflowButtonDrawable);
 
         mAdapter = new ActivityChooserViewAdapter();
@@ -255,7 +240,7 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
 
         Resources resources = context.getResources();
         mListPopupMaxWidth = Math.max(resources.getDisplayMetrics().widthPixels / 2,
-              resources.getDimensionPixelSize(R.dimen.abs__config_prefDialogWidth));
+                resources.getDimensionPixelSize(R.dimen.abs__config_prefDialogWidth));
     }
 
     /**
@@ -287,7 +272,7 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
     /**
      * Sets the content description for the button that expands the activity
      * overflow list.
-     *
+     * <p>
      * description as a clue about the action performed by the button.
      * For example, if a share activity is to be chosen the content
      * description should be something like "Share with".
@@ -301,6 +286,7 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
 
     /**
      * Set the provider hosting this view, if applicable.
+     *
      * @hide Internal use only
      */
     public void setProvider(ActionProvider provider) {
@@ -334,7 +320,7 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
         getViewTreeObserver().addOnGlobalLayoutListener(mOnGlobalLayoutListener);
 
         final boolean defaultActivityButtonShown =
-            mDefaultActivityButton.getVisibility() == VISIBLE;
+                mDefaultActivityButton.getVisibility() == VISIBLE;
 
         final int activityCount = mAdapter.getActivityCount();
         final int maxActivityCountOffset = defaultActivityButtonShown ? 1 : 0;
@@ -541,6 +527,12 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
         }
     }
 
+    private static class SetActivated {
+        public static void invoke(View view, boolean activated) {
+            view.setActivated(activated);
+        }
+    }
+
     /**
      * Interface implementation to avoid publishing them in the APIs.
      */
@@ -554,7 +546,8 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
             switch (itemViewType) {
                 case ActivityChooserViewAdapter.ITEM_VIEW_TYPE_FOOTER: {
                     showPopupUnchecked(ActivityChooserViewAdapter.MAX_ACTIVITY_COUNT_UNLIMITED);
-                } break;
+                }
+                break;
                 case ActivityChooserViewAdapter.ITEM_VIEW_TYPE_ACTIVITY: {
                     dismissPopup();
                     if (mIsSelectingDefaultActivity) {
@@ -571,7 +564,8 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
                             mContext.startActivity(launchIntent);
                         }
                     }
-                } break;
+                }
+                break;
                 default:
                     throw new IllegalArgumentException();
             }
@@ -624,14 +618,6 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
         }
     }
 
-    private static class SetActivated {
-        public static void invoke(View view, boolean activated) {
-            view.setActivated(activated);
-        }
-    }
-
-    private static final boolean IS_HONEYCOMB = Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB;
-
     /**
      * Adapter for backing the list of activities shown in the popup.
      */
@@ -657,26 +643,6 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
         private boolean mHighlightDefaultActivity;
 
         private boolean mShowFooterView;
-
-        public void setDataModel(ActivityChooserModel dataModel) {
-            ActivityChooserModel oldDataModel = mAdapter.getDataModel();
-            if (oldDataModel != null && isShown()) {
-                try {
-                    oldDataModel.unregisterObserver(mModelDataSetOberver);
-                } catch (IllegalStateException e) {
-                    //Oh, well... fixes issue #557
-                }
-            }
-            mDataModel = dataModel;
-            if (dataModel != null && isShown()) {
-                try {
-                    dataModel.registerObserver(mModelDataSetOberver);
-                } catch (IllegalStateException e) {
-                    // Related to #557.
-                }
-            }
-            notifyDataSetChanged();
-        }
 
         @Override
         public int getItemViewType(int position) {
@@ -788,13 +754,6 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
             return contentWidth;
         }
 
-        public void setMaxActivityCount(int maxActivityCount) {
-            if (mMaxActivityCount != maxActivityCount) {
-                mMaxActivityCount = maxActivityCount;
-                notifyDataSetChanged();
-            }
-        }
-
         public ResolveInfo getDefaultActivity() {
             return mDataModel.getDefaultActivity();
         }
@@ -818,12 +777,39 @@ class ActivityChooserView extends ViewGroup implements ActivityChooserModelClien
             return mMaxActivityCount;
         }
 
+        public void setMaxActivityCount(int maxActivityCount) {
+            if (mMaxActivityCount != maxActivityCount) {
+                mMaxActivityCount = maxActivityCount;
+                notifyDataSetChanged();
+            }
+        }
+
         public ActivityChooserModel getDataModel() {
             return mDataModel;
         }
 
+        public void setDataModel(ActivityChooserModel dataModel) {
+            ActivityChooserModel oldDataModel = mAdapter.getDataModel();
+            if (oldDataModel != null && isShown()) {
+                try {
+                    oldDataModel.unregisterObserver(mModelDataSetOberver);
+                } catch (IllegalStateException e) {
+                    //Oh, well... fixes issue #557
+                }
+            }
+            mDataModel = dataModel;
+            if (dataModel != null && isShown()) {
+                try {
+                    dataModel.registerObserver(mModelDataSetOberver);
+                } catch (IllegalStateException e) {
+                    // Related to #557.
+                }
+            }
+            notifyDataSetChanged();
+        }
+
         public void setShowDefaultActivity(boolean showDefaultActivity,
-                boolean highlightDefaultActivity) {
+                                           boolean highlightDefaultActivity) {
             if (mShowDefaultActivity != showDefaultActivity
                     || mHighlightDefaultActivity != highlightDefaultActivity) {
                 mShowDefaultActivity = showDefaultActivity;

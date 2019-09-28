@@ -88,15 +88,15 @@ public abstract class ActionProvider {
      * <ul>
      * <li>
      * Receiving a call to {@link MenuItem.OnMenuItemClickListener#onMenuItemClick
-     *  MenuItem.OnMenuItemClickListener.onMenuItemClick}.
+     * MenuItem.OnMenuItemClickListener.onMenuItemClick}.
      * </li>
      * <li>
      * Receiving a call to {@link android.app.Activity#onOptionsItemSelected(MenuItem)
-     *  Activity.onOptionsItemSelected(MenuItem)}
+     * Activity.onOptionsItemSelected(MenuItem)}
      * </li>
      * <li>
      * Receiving a call to {@link android.app.Fragment#onOptionsItemSelected(MenuItem)
-     *  Fragment.onOptionsItemSelected(MenuItem)}
+     * Fragment.onOptionsItemSelected(MenuItem)}
      * </li>
      * <li>
      * Launching the {@link android.content.Intent} set via

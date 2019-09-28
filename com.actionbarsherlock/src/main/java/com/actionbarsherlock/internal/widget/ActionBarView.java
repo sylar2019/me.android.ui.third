@@ -16,7 +16,6 @@
 
 package com.actionbarsherlock.internal.widget;
 
-import com.actionbarsherlock.internal.ResourcesCompat;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
@@ -47,6 +46,7 @@ import android.widget.TextView;
 import com.actionbarsherlock.R;
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.ActionBar.OnNavigationListener;
+import com.actionbarsherlock.internal.ResourcesCompat;
 import com.actionbarsherlock.internal.view.menu.ActionMenuItem;
 import com.actionbarsherlock.internal.view.menu.ActionMenuPresenter;
 import com.actionbarsherlock.internal.view.menu.ActionMenuView;
@@ -66,88 +66,78 @@ import static com.actionbarsherlock.internal.ResourcesCompat.getResources_getBoo
  * @hide
  */
 public class ActionBarView extends AbsActionBarView {
-    private static final String TAG = "ActionBarView";
-
     /**
      * Display options applied by default
      */
     public static final int DISPLAY_DEFAULT = 0;
-
+    private static final String TAG = "ActionBarView";
     /**
      * Display options that require re-layout as opposed to a simple invalidate
      */
     private static final int DISPLAY_RELAYOUT_MASK =
             ActionBar.DISPLAY_SHOW_HOME |
-            ActionBar.DISPLAY_USE_LOGO |
-            ActionBar.DISPLAY_HOME_AS_UP |
-            ActionBar.DISPLAY_SHOW_CUSTOM |
-            ActionBar.DISPLAY_SHOW_TITLE;
+                    ActionBar.DISPLAY_USE_LOGO |
+                    ActionBar.DISPLAY_HOME_AS_UP |
+                    ActionBar.DISPLAY_SHOW_CUSTOM |
+                    ActionBar.DISPLAY_SHOW_TITLE;
 
     private static final int DEFAULT_CUSTOM_GRAVITY = Gravity.LEFT | Gravity.CENTER_VERTICAL;
-
+    View mExpandedActionView;
+    Window.Callback mWindowCallback;
     private int mNavigationMode;
     private int mDisplayOptions = -1;
     private CharSequence mTitle;
     private CharSequence mSubtitle;
     private Drawable mIcon;
     private Drawable mLogo;
-
     private HomeView mHomeLayout;
     private HomeView mExpandedHomeLayout;
     private LinearLayout mTitleLayout;
     private TextView mTitleView;
     private TextView mSubtitleView;
     private View mTitleUpView;
-
     private IcsSpinner mSpinner;
     private IcsLinearLayout mListNavLayout;
     private ScrollingTabContainerView mTabScrollView;
     private View mCustomNavView;
     private IcsProgressBar mProgressView;
     private IcsProgressBar mIndeterminateProgressView;
-
     private int mProgressBarPadding;
     private int mItemPadding;
-
     private int mTitleStyleRes;
     private int mSubtitleStyleRes;
     private int mProgressStyle;
     private int mIndeterminateProgressStyle;
-
     private boolean mUserTitle;
     private boolean mIncludeTabs;
     private boolean mIsCollapsable;
     private boolean mIsCollapsed;
-
     private MenuBuilder mOptionsMenu;
-
     private ActionBarContextView mContextView;
-
     private ActionMenuItem mLogoNavItem;
 
+    //UNUSED private Runnable mTabSelector;
+    private final OnClickListener mUpClickListener = new OnClickListener() {
+        public void onClick(View v) {
+            mWindowCallback.onMenuItemSelected(Window.FEATURE_OPTIONS_PANEL, mLogoNavItem);
+        }
+    };
     private SpinnerAdapter mSpinnerAdapter;
     private OnNavigationListener mCallback;
-
-    //UNUSED private Runnable mTabSelector;
-
-    private ExpandedActionViewMenuPresenter mExpandedMenuPresenter;
-    View mExpandedActionView;
-
-    Window.Callback mWindowCallback;
-
     @SuppressWarnings("rawtypes")
     private final IcsAdapterView.OnItemSelectedListener mNavItemSelectedListener =
             new IcsAdapterView.OnItemSelectedListener() {
-        public void onItemSelected(IcsAdapterView parent, View view, int position, long id) {
-            if (mCallback != null) {
-                mCallback.onNavigationItemSelected(position, id);
-            }
-        }
-        public void onNothingSelected(IcsAdapterView parent) {
-            // Do nothing
-        }
-    };
+                public void onItemSelected(IcsAdapterView parent, View view, int position, long id) {
+                    if (mCallback != null) {
+                        mCallback.onNavigationItemSelected(position, id);
+                    }
+                }
 
+                public void onNothingSelected(IcsAdapterView parent) {
+                    // Do nothing
+                }
+            };
+    private ExpandedActionViewMenuPresenter mExpandedMenuPresenter;
     private final OnClickListener mExpandedActionViewUpListener = new OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -155,12 +145,6 @@ public class ActionBarView extends AbsActionBarView {
             if (item != null) {
                 item.collapseActionView();
             }
-        }
-    };
-
-    private final OnClickListener mUpClickListener = new OnClickListener() {
-        public void onClick(View v) {
-            mWindowCallback.onMenuItemSelected(Window.FEATURE_OPTIONS_PANEL, mLogoNavItem);
         }
     };
 
@@ -291,6 +275,7 @@ public class ActionBarView extends AbsActionBarView {
 
     /**
      * Set the window callback used to invoke menu items; used for dispatching home button presses.
+     *
      * @param cb Window callback to dispatch to
      */
     public void setWindowCallback(Window.Callback cb) {
@@ -325,6 +310,10 @@ public class ActionBarView extends AbsActionBarView {
         addView(mIndeterminateProgressView);
     }
 
+    public boolean isSplitActionBar() {
+        return mSplitActionBar;
+    }
+
     @Override
     public void setSplitActionBar(boolean splitActionBar) {
         if (mSplitActionBar != splitActionBar) {
@@ -346,10 +335,6 @@ public class ActionBarView extends AbsActionBarView {
             }
             super.setSplitActionBar(splitActionBar);
         }
-    }
-
-    public boolean isSplitActionBar() {
-        return mSplitActionBar;
     }
 
     public boolean hasEmbeddedTabs() {
@@ -404,7 +389,7 @@ public class ActionBarView extends AbsActionBarView {
         if (!mSplitActionBar) {
             mActionMenuPresenter.setExpandedActionViewsExclusive(
                     getResources_getBoolean(getContext(),
-                    R.bool.abs__action_bar_expanded_action_views_exclusive));
+                            R.bool.abs__action_bar_expanded_action_views_exclusive));
             configPresenters(builder);
             menuView = (ActionMenuView) mActionMenuPresenter.getMenuView(this);
             final ViewGroup oldParent = (ViewGroup) menuView.getParent();
@@ -463,25 +448,14 @@ public class ActionBarView extends AbsActionBarView {
         }
     }
 
-    public void setCustomNavigationView(View view) {
-        final boolean showCustom = (mDisplayOptions & ActionBar.DISPLAY_SHOW_CUSTOM) != 0;
-        if (mCustomNavView != null && showCustom) {
-            removeView(mCustomNavView);
-        }
-        mCustomNavView = view;
-        if (mCustomNavView != null && showCustom) {
-            addView(mCustomNavView);
-        }
-    }
-
     public CharSequence getTitle() {
         return mTitle;
     }
 
     /**
      * Set the action bar title. This will always replace or override window titles.
-     * @param title Title to set
      *
+     * @param title Title to set
      * @see #setWindowTitle(CharSequence)
      */
     public void setTitle(CharSequence title) {
@@ -491,8 +465,8 @@ public class ActionBarView extends AbsActionBarView {
 
     /**
      * Set the window title. A window title will always be replaced or overridden by a user title.
-     * @param title Title to set
      *
+     * @param title Title to set
      * @see #setTitle(CharSequence)
      */
     public void setWindowTitle(CharSequence title) {
@@ -544,6 +518,115 @@ public class ActionBarView extends AbsActionBarView {
             mHomeLayout.setContentDescription(mContext.getResources().getText(
                     R.string.abs__action_bar_home_description));
         }
+    }
+
+    public void setIcon(Drawable icon) {
+        mIcon = icon;
+        if (icon != null &&
+                ((mDisplayOptions & ActionBar.DISPLAY_USE_LOGO) == 0 || mLogo == null)) {
+            mHomeLayout.setIcon(icon);
+        }
+    }
+
+    public void setIcon(int resId) {
+        setIcon(mContext.getResources().getDrawable(resId));
+    }
+
+    public void setLogo(Drawable logo) {
+        mLogo = logo;
+        if (logo != null && (mDisplayOptions & ActionBar.DISPLAY_USE_LOGO) != 0) {
+            mHomeLayout.setIcon(logo);
+        }
+    }
+
+    public void setLogo(int resId) {
+        setLogo(mContext.getResources().getDrawable(resId));
+    }
+
+    public SpinnerAdapter getDropdownAdapter() {
+        return mSpinnerAdapter;
+    }
+
+    public void setDropdownAdapter(SpinnerAdapter adapter) {
+        mSpinnerAdapter = adapter;
+        if (mSpinner != null) {
+            mSpinner.setAdapter(adapter);
+        }
+    }
+
+    public int getDropdownSelectedPosition() {
+        return mSpinner.getSelectedItemPosition();
+    }
+
+    public void setDropdownSelectedPosition(int position) {
+        mSpinner.setSelection(position);
+    }
+
+    public View getCustomNavigationView() {
+        return mCustomNavView;
+    }
+
+    public void setCustomNavigationView(View view) {
+        final boolean showCustom = (mDisplayOptions & ActionBar.DISPLAY_SHOW_CUSTOM) != 0;
+        if (mCustomNavView != null && showCustom) {
+            removeView(mCustomNavView);
+        }
+        mCustomNavView = view;
+        if (mCustomNavView != null && showCustom) {
+            addView(mCustomNavView);
+        }
+    }
+
+    public int getNavigationMode() {
+        return mNavigationMode;
+    }
+
+    public void setNavigationMode(int mode) {
+        final int oldMode = mNavigationMode;
+        if (mode != oldMode) {
+            switch (oldMode) {
+                case ActionBar.NAVIGATION_MODE_LIST:
+                    if (mListNavLayout != null) {
+                        removeView(mListNavLayout);
+                    }
+                    break;
+                case ActionBar.NAVIGATION_MODE_TABS:
+                    if (mTabScrollView != null && mIncludeTabs) {
+                        removeView(mTabScrollView);
+                    }
+            }
+
+            switch (mode) {
+                case ActionBar.NAVIGATION_MODE_LIST:
+                    if (mSpinner == null) {
+                        mSpinner = new IcsSpinner(mContext, null,
+                                R.attr.actionDropDownStyle);
+                        mListNavLayout = (IcsLinearLayout) LayoutInflater.from(mContext)
+                                .inflate(R.layout.abs__action_bar_tab_bar_view, null);
+                        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                                LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT);
+                        params.gravity = Gravity.CENTER;
+                        mListNavLayout.addView(mSpinner, params);
+                    }
+                    if (mSpinner.getAdapter() != mSpinnerAdapter) {
+                        mSpinner.setAdapter(mSpinnerAdapter);
+                    }
+                    mSpinner.setOnItemSelectedListener(mNavItemSelectedListener);
+                    addView(mListNavLayout);
+                    break;
+                case ActionBar.NAVIGATION_MODE_TABS:
+                    if (mTabScrollView != null && mIncludeTabs) {
+                        addView(mTabScrollView);
+                    }
+                    break;
+            }
+            mNavigationMode = mode;
+            requestLayout();
+        }
+    }
+
+    public int getDisplayOptions() {
+        return mDisplayOptions;
     }
 
     public void setDisplayOptions(int options) {
@@ -611,104 +694,6 @@ public class ActionBarView extends AbsActionBarView {
             mHomeLayout.setContentDescription(mContext.getResources().getText(
                     R.string.abs__action_bar_home_description));
         }
-    }
-
-    public void setIcon(Drawable icon) {
-        mIcon = icon;
-        if (icon != null &&
-                ((mDisplayOptions & ActionBar.DISPLAY_USE_LOGO) == 0 || mLogo == null)) {
-            mHomeLayout.setIcon(icon);
-        }
-    }
-
-    public void setIcon(int resId) {
-        setIcon(mContext.getResources().getDrawable(resId));
-    }
-
-    public void setLogo(Drawable logo) {
-        mLogo = logo;
-        if (logo != null && (mDisplayOptions & ActionBar.DISPLAY_USE_LOGO) != 0) {
-            mHomeLayout.setIcon(logo);
-        }
-    }
-
-    public void setLogo(int resId) {
-        setLogo(mContext.getResources().getDrawable(resId));
-    }
-
-    public void setNavigationMode(int mode) {
-        final int oldMode = mNavigationMode;
-        if (mode != oldMode) {
-            switch (oldMode) {
-            case ActionBar.NAVIGATION_MODE_LIST:
-                if (mListNavLayout != null) {
-                    removeView(mListNavLayout);
-                }
-                break;
-            case ActionBar.NAVIGATION_MODE_TABS:
-                if (mTabScrollView != null && mIncludeTabs) {
-                    removeView(mTabScrollView);
-                }
-            }
-
-            switch (mode) {
-            case ActionBar.NAVIGATION_MODE_LIST:
-                if (mSpinner == null) {
-                    mSpinner = new IcsSpinner(mContext, null,
-                            R.attr.actionDropDownStyle);
-                    mListNavLayout = (IcsLinearLayout) LayoutInflater.from(mContext)
-                            .inflate(R.layout.abs__action_bar_tab_bar_view, null);
-                    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                            LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT);
-                    params.gravity = Gravity.CENTER;
-                    mListNavLayout.addView(mSpinner, params);
-                }
-                if (mSpinner.getAdapter() != mSpinnerAdapter) {
-                    mSpinner.setAdapter(mSpinnerAdapter);
-                }
-                mSpinner.setOnItemSelectedListener(mNavItemSelectedListener);
-                addView(mListNavLayout);
-                break;
-            case ActionBar.NAVIGATION_MODE_TABS:
-                if (mTabScrollView != null && mIncludeTabs) {
-                    addView(mTabScrollView);
-                }
-                break;
-            }
-            mNavigationMode = mode;
-            requestLayout();
-        }
-    }
-
-    public void setDropdownAdapter(SpinnerAdapter adapter) {
-        mSpinnerAdapter = adapter;
-        if (mSpinner != null) {
-            mSpinner.setAdapter(adapter);
-        }
-    }
-
-    public SpinnerAdapter getDropdownAdapter() {
-        return mSpinnerAdapter;
-    }
-
-    public void setDropdownSelectedPosition(int position) {
-        mSpinner.setSelection(position);
-    }
-
-    public int getDropdownSelectedPosition() {
-        return mSpinner.getSelectedItemPosition();
-    }
-
-    public View getCustomNavigationView() {
-        return mCustomNavView;
-    }
-
-    public int getNavigationMode() {
-        return mNavigationMode;
-    }
-
-    public int getDisplayOptions() {
-        return mDisplayOptions;
     }
 
     @Override
@@ -937,7 +922,7 @@ public class ActionBarView extends AbsActionBarView {
                     MeasureSpec.EXACTLY : MeasureSpec.AT_MOST;
             int customNavWidth = Math.max(0,
                     (lp.width >= 0 ? Math.min(lp.width, availableWidth) : availableWidth)
-                    - horizontalMargin);
+                            - horizontalMargin);
             final int hgrav = (ablp != null ? ablp.gravity : DEFAULT_CUSTOM_GRAVITY) &
                     Gravity.HORIZONTAL_GRAVITY_MASK;
 
@@ -1170,6 +1155,16 @@ public class ActionBarView extends AbsActionBarView {
     }
 
     static class SavedState extends BaseSavedState {
+        public static final Parcelable.Creator<SavedState> CREATOR =
+                new Parcelable.Creator<SavedState>() {
+                    public SavedState createFromParcel(Parcel in) {
+                        return new SavedState(in);
+                    }
+
+                    public SavedState[] newArray(int size) {
+                        return new SavedState[size];
+                    }
+                };
         int expandedMenuItemId;
         boolean isOverflowOpen;
 
@@ -1189,17 +1184,6 @@ public class ActionBarView extends AbsActionBarView {
             out.writeInt(expandedMenuItemId);
             out.writeInt(isOverflowOpen ? 1 : 0);
         }
-
-        public static final Parcelable.Creator<SavedState> CREATOR =
-                new Parcelable.Creator<SavedState>() {
-            public SavedState createFromParcel(Parcel in) {
-                return new SavedState(in);
-            }
-
-            public SavedState[] newArray(int size) {
-                return new SavedState[size];
-            }
-        };
     }
 
     public static class HomeView extends FrameLayout {

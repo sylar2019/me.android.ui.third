@@ -65,6 +65,7 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
+
 import com.actionbarsherlock.R;
 import com.actionbarsherlock.view.CollapsibleActionView;
 
@@ -93,12 +94,12 @@ import static com.actionbarsherlock.widget.SuggestionsAdapter.getColumnString;
  * <a href="{@docRoot}guide/topics/search/index.html">Search</a> developer guide.</p>
  * </div>
  *
- * @see android.view.MenuItem#SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW
  * @attr ref android.R.styleable#SearchView_iconifiedByDefault
  * @attr ref android.R.styleable#SearchView_imeOptions
  * @attr ref android.R.styleable#SearchView_inputType
  * @attr ref android.R.styleable#SearchView_maxWidth
  * @attr ref android.R.styleable#SearchView_queryHint
+ * @see android.view.MenuItem#SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW
  */
 public class SearchView extends LinearLayout implements CollapsibleActionView {
 
@@ -109,13 +110,18 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
      * Private constant for removing the microphone in the keyboard.
      */
     private static final String IME_OPTION_NO_MICROPHONE = "nm";
-
+    // For voice searching
+    private final Intent mVoiceWebSearchIntent;
+    private final Intent mVoiceAppSearchIntent;
+    // A weak map of drawables we've gotten from other packages, so we don't load them
+    // more than once.
+    private final WeakHashMap<String, Drawable.ConstantState> mOutsideDrawablesCache =
+            new WeakHashMap<String, Drawable.ConstantState>();
     private OnQueryTextListener mOnQueryChangeListener;
     private OnCloseListener mOnCloseListener;
     private OnFocusChangeListener mOnQueryTextFocusChangeListener;
     private OnSuggestionListener mOnSuggestionListener;
     private OnClickListener mOnSearchClickListener;
-
     private boolean mIconifiedByDefault;
     private boolean mIconified;
     private CursorAdapter mSuggestionsAdapter;
@@ -127,6 +133,24 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     private View mSearchEditFrame;
     private View mVoiceButton;
     private SearchAutoComplete mQueryTextView;
+    private final OnItemSelectedListener mOnItemSelectedListener = new OnItemSelectedListener() {
+
+        /**
+         * Implements OnItemSelectedListener
+         */
+        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+            if (DBG) Log.d(LOG_TAG, "onItemSelected() position " + position);
+            SearchView.this.onItemSelected(position);
+        }
+
+        /**
+         * Implements OnItemSelectedListener
+         */
+        public void onNothingSelected(AdapterView<?> parent) {
+            if (DBG)
+                Log.d(LOG_TAG, "onNothingSelected()");
+        }
+    };
     private View mDropDownAnchor;
     private ImageView mSearchHintIcon;
     private boolean mSubmitButtonEnabled;
@@ -139,14 +163,12 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     private CharSequence mUserQuery;
     private boolean mExpandedInActionView;
     private int mCollapsedImeOptions;
-
     private SearchableInfo mSearchable;
     private Bundle mAppSearchData;
-
     /*
-    * SearchView can be set expanded before the IME is ready to be shown during
-    * initial UI setup. The show operation is asynchronous to account for this.
-    */
+     * SearchView can be set expanded before the IME is ready to be shown during
+     * initial UI setup. The show operation is asynchronous to account for this.
+     */
     private Runnable mShowImeRunnable = new Runnable() {
         public void run() {
             InputMethodManager imm = (InputMethodManager)
@@ -157,13 +179,96 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
             }
         }
     };
+    private final OnClickListener mOnClickListener = new OnClickListener() {
 
+        public void onClick(View v) {
+            if (v == mSearchButton) {
+                onSearchClicked();
+            } else if (v == mCloseButton) {
+                onCloseClicked();
+            } else if (v == mSubmitButton) {
+                onSubmitQuery();
+            } else if (v == mVoiceButton) {
+                onVoiceClicked();
+            } else if (v == mQueryTextView) {
+                forceSuggestionQuery();
+            }
+        }
+    };
+    /**
+     * React to the user typing "enter" or other hardwired keys while typing in
+     * the search box. This handles these special keys while the edit box has
+     * focus.
+     */
+    View.OnKeyListener mTextKeyListener = new View.OnKeyListener() {
+        public boolean onKey(View v, int keyCode, KeyEvent event) {
+            // guard against possible race conditions
+            if (mSearchable == null) {
+                return false;
+            }
+
+            if (DBG) {
+                Log.d(LOG_TAG, "mTextListener.onKey(" + keyCode + "," + event + "), selection: "
+                        + mQueryTextView.getListSelection());
+            }
+
+            // If a suggestion is selected, handle enter, search key, and action keys
+            // as presses on the selected suggestion
+            if (mQueryTextView.isPopupShowing()
+                    && mQueryTextView.getListSelection() != ListView.INVALID_POSITION) {
+                return onSuggestionsKey(v, keyCode, event);
+            }
+
+            // If there is text in the query box, handle enter, and action keys
+            // The search key is handled by the dialog's onKeyDown().
+            if (!mQueryTextView.isEmpty() && KeyEventCompat.hasNoModifiers(event)) {
+                if (event.getAction() == KeyEvent.ACTION_UP) {
+                    if (keyCode == KeyEvent.KEYCODE_ENTER) {
+                        v.cancelLongPress();
+
+                        // Launch as a regular search.
+                        launchQuerySearch(KeyEvent.KEYCODE_UNKNOWN, null, mQueryTextView.getText()
+                                .toString());
+                        return true;
+                    }
+                }
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    // TODO SearchableInfo.ActionKeyInfo actionKey = mSearchable.findActionKey(keyCode);
+                    // TODO if ((actionKey != null) && (actionKey.getQueryActionMsg() != null)) {
+                    // TODO     launchQuerySearch(keyCode, actionKey.getQueryActionMsg(), mQueryTextView
+                    // TODO             .getText().toString());
+                    // TODO     return true;
+                    // TODO }
+                }
+            }
+            return false;
+        }
+    };
+    private final OnEditorActionListener mOnEditorActionListener = new OnEditorActionListener() {
+
+        /**
+         * Called when the input method default action key is pressed.
+         */
+        public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+            onSubmitQuery();
+            return true;
+        }
+    };
+    private final OnItemClickListener mOnItemClickListener = new OnItemClickListener() {
+
+        /**
+         * Implements OnItemClickListener
+         */
+        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            if (DBG) Log.d(LOG_TAG, "onItemClick() position " + position);
+            onItemClicked(position, KeyEvent.KEYCODE_UNKNOWN, null);
+        }
+    };
     private Runnable mUpdateDrawableStateRunnable = new Runnable() {
         public void run() {
             updateFocusedState();
         }
     };
-
     private Runnable mReleaseCursorRunnable = new Runnable() {
         public void run() {
             if (mSuggestionsAdapter != null && mSuggestionsAdapter instanceof SuggestionsAdapter) {
@@ -171,82 +276,22 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
             }
         }
     };
-
-    // For voice searching
-    private final Intent mVoiceWebSearchIntent;
-    private final Intent mVoiceAppSearchIntent;
-
-    // A weak map of drawables we've gotten from other packages, so we don't load them
-    // more than once.
-    private final WeakHashMap<String, Drawable.ConstantState> mOutsideDrawablesCache =
-            new WeakHashMap<String, Drawable.ConstantState>();
-
     /**
-     * Callbacks for changes to the query text.
+     * Callback to watch the text field for empty/non-empty
      */
-    public interface OnQueryTextListener {
+    private TextWatcher mTextWatcher = new TextWatcher() {
 
-        /**
-         * Called when the user submits the query. This could be due to a key press on the
-         * keyboard or due to pressing a submit button.
-         * The listener can override the standard behavior by returning true
-         * to indicate that it has handled the submit request. Otherwise return false to
-         * let the SearchView handle the submission by launching any associated intent.
-         *
-         * @param query the query text that is to be submitted
-         *
-         * @return true if the query has been handled by the listener, false to let the
-         * SearchView perform the default action.
-         */
-        boolean onQueryTextSubmit(String query);
+        public void beforeTextChanged(CharSequence s, int start, int before, int after) {
+        }
 
-        /**
-         * Called when the query text is changed by the user.
-         *
-         * @param newText the new content of the query text field.
-         *
-         * @return false if the SearchView should perform the default action of showing any
-         * suggestions if available, true if the action was handled by the listener.
-         */
-        boolean onQueryTextChange(String newText);
-    }
+        public void onTextChanged(CharSequence s, int start,
+                                  int before, int after) {
+            SearchView.this.onTextChanged(s);
+        }
 
-    public interface OnCloseListener {
-
-        /**
-         * The user is attempting to close the SearchView.
-         *
-         * @return true if the listener wants to override the default behavior of clearing the
-         * text field and dismissing it, false otherwise.
-         */
-        boolean onClose();
-    }
-
-    /**
-     * Callback interface for selection events on suggestions. These callbacks
-     * are only relevant when a SearchableInfo has been specified by {@link #setSearchableInfo}.
-     */
-    public interface OnSuggestionListener {
-
-        /**
-         * Called when a suggestion was selected by navigating to it.
-         * @param position the absolute position in the list of suggestions.
-         *
-         * @return true if the listener handles the event and wants to override the default
-         * behavior of possibly rewriting the query based on the selected item, false otherwise.
-         */
-        boolean onSuggestionSelect(int position);
-
-        /**
-         * Called when a suggestion was clicked.
-         * @param position the absolute position of the clicked item in the list of suggestions.
-         *
-         * @return true if the listener handles the event and wants to override the default
-         * behavior of launching any intent or submitting a search query specified on that item.
-         * Return false otherwise.
-         */
-        boolean onSuggestionClick(int position);
-    }
+        public void afterTextChanged(Editable s) {
+        }
+    };
 
     public SearchView(Context context) {
         this(context, null);
@@ -328,7 +373,7 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
         mVoiceWebSearchIntent = new Intent(RecognizerIntent.ACTION_WEB_SEARCH);
         mVoiceWebSearchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         mVoiceWebSearchIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-            RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH);
+                RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH);
 
         mVoiceAppSearchIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         mVoiceAppSearchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -339,13 +384,14 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
                 mDropDownAnchor.addOnLayoutChangeListener(new OnLayoutChangeListener() {
                     @Override
                     public void onLayoutChange(View v, int left, int top, int right, int bottom,
-                                                                         int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                                               int oldLeft, int oldTop, int oldRight, int oldBottom) {
                         adjustDropDownSizeAndPosition();
                     }
                 });
             } else {
                 mDropDownAnchor.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-                    @Override public void onGlobalLayout() {
+                    @Override
+                    public void onGlobalLayout() {
                         adjustDropDownSizeAndPosition();
                     }
                 });
@@ -356,13 +402,50 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
         updateQueryHint();
     }
 
+    static boolean isLandscapeMode(Context context) {
+        return context.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
+    private static void ensureImeVisible(AutoCompleteTextView view, boolean visible) {
+        try {
+            Method method = AutoCompleteTextView.class.getMethod("ensureImeVisible", boolean.class);
+            method.setAccessible(true);
+            method.invoke(view, visible);
+        } catch (Exception e) {
+            //Oh well...
+        }
+    }
+
+    private static void showSoftInputUnchecked(View view, InputMethodManager imm, int flags) {
+        try {
+            Method method = imm.getClass().getMethod("showSoftInputUnchecked", int.class, ResultReceiver.class);
+            method.setAccessible(true);
+            method.invoke(imm, flags, null);
+        } catch (Exception e) {
+            //Fallback to public API which hopefully does mostly the same thing
+            imm.showSoftInput(view, flags);
+        }
+    }
+
+    private static void setText(AutoCompleteTextView view, CharSequence text, boolean filter) {
+        try {
+            Method method = AutoCompleteTextView.class.getMethod("setText", CharSequence.class, boolean.class);
+            method.setAccessible(true);
+            method.invoke(view, text, filter);
+        } catch (Exception e) {
+            //Fallback to public API which hopefully does mostly the same thing
+            view.setText(text);
+        }
+    }
+
     /**
      * Sets the SearchableInfo for this SearchView. Properties in the SearchableInfo are used
      * to display labels, hints, suggestions, create intents for launching search results screens
      * and controlling other affordances such as a voice button.
      *
      * @param searchable a SearchableInfo can be retrieved from the SearchManager, for a specific
-     * activity or a global search provider.
+     *                   activity or a global search provider.
      */
     public void setSearchableInfo(SearchableInfo searchable) {
         mSearchable = searchable;
@@ -383,6 +466,7 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
 
     /**
      * Sets the APP_DATA for legacy SearchDialog use.
+     *
      * @param appSearchData bundle provided by the app when launching the search dialog
      * @hide
      */
@@ -391,51 +475,51 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     }
 
     /**
-     * Sets the IME options on the query text field.
-     *
-     * @see TextView#setImeOptions(int)
-     * @param imeOptions the options to set on the query text field
-     *
-     * @attr ref android.R.styleable#SearchView_imeOptions
-     */
-    public void setImeOptions(int imeOptions) {
-        mQueryTextView.setImeOptions(imeOptions);
-    }
-
-    /**
      * Returns the IME options set on the query text field.
-     * @return the ime options
-     * @see TextView#setImeOptions(int)
      *
+     * @return the ime options
      * @attr ref android.R.styleable#SearchView_imeOptions
+     * @see TextView#setImeOptions(int)
      */
     public int getImeOptions() {
         return mQueryTextView.getImeOptions();
     }
 
     /**
-     * Sets the input type on the query text field.
+     * Sets the IME options on the query text field.
      *
-     * @see TextView#setInputType(int)
-     * @param inputType the input type to set on the query text field
-     *
-     * @attr ref android.R.styleable#SearchView_inputType
+     * @param imeOptions the options to set on the query text field
+     * @attr ref android.R.styleable#SearchView_imeOptions
+     * @see TextView#setImeOptions(int)
      */
-    public void setInputType(int inputType) {
-        mQueryTextView.setInputType(inputType);
+    public void setImeOptions(int imeOptions) {
+        mQueryTextView.setImeOptions(imeOptions);
     }
 
     /**
      * Returns the input type set on the query text field.
-     * @return the input type
      *
+     * @return the input type
      * @attr ref android.R.styleable#SearchView_inputType
      */
     public int getInputType() {
         return mQueryTextView.getInputType();
     }
 
-    /** @hide */
+    /**
+     * Sets the input type on the query text field.
+     *
+     * @param inputType the input type to set on the query text field
+     * @attr ref android.R.styleable#SearchView_inputType
+     * @see TextView#setInputType(int)
+     */
+    public void setInputType(int inputType) {
+        mQueryTextView.setInputType(inputType);
+    }
+
+    /**
+     * @hide
+     */
     @Override
     public boolean requestFocus(int direction, Rect previouslyFocusedRect) {
         // Don't accept focus if in the middle of clearing focus
@@ -454,7 +538,9 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
         }
     }
 
-    /** @hide */
+    /**
+     * @hide
+     */
     @Override
     public void clearFocus() {
         mClearingFocus = true;
@@ -468,7 +554,7 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
      * Sets a listener for user actions within the SearchView.
      *
      * @param listener the listener object that receives callbacks when the user performs
-     * actions in the SearchView such as clicking on buttons or typing a query.
+     *                 actions in the SearchView such as clicking on buttons or typing a query.
      */
     public void setOnQueryTextListener(OnQueryTextListener listener) {
         mOnQueryChangeListener = listener;
@@ -507,7 +593,7 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
      * setIconified(false)} can also cause this listener to be informed.
      *
      * @param listener the listener to inform when the search button is clicked or
-     * the text field is programmatically de-iconified.
+     *                 the text field is programmatically de-iconified.
      */
     public void setOnSearchClickListener(OnClickListener listener) {
         mOnSearchClickListener = listener;
@@ -523,12 +609,21 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     }
 
     /**
+     * Sets the text in the query box, without updating the suggestions.
+     */
+    private void setQuery(CharSequence query) {
+        setText(mQueryTextView, query, true);
+        // Move the cursor to the end
+        mQueryTextView.setSelection(TextUtils.isEmpty(query) ? 0 : query.length());
+    }
+
+    /**
      * Sets a query string in the text field and optionally submits the query as well.
      *
-     * @param query the query string. This replaces any query text already present in the
-     * text field.
+     * @param query  the query string. This replaces any query text already present in the
+     *               text field.
      * @param submit whether to submit the query right now or only update the contents of
-     * text field.
+     *               text field.
      */
     public void setQuery(CharSequence query, boolean submit) {
         mQueryTextView.setText(query);
@@ -544,22 +639,9 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     }
 
     /**
-     * Sets the hint text to display in the query text field. This overrides any hint specified
-     * in the SearchableInfo.
-     *
-     * @param hint the hint text to display
-     *
-     * @attr ref android.R.styleable#SearchView_queryHint
-     */
-    public void setQueryHint(CharSequence hint) {
-        mQueryHint = hint;
-        updateQueryHint();
-    }
-
-    /**
      * Gets the hint text to display in the query text field.
-     * @return the query hint text, if specified, null otherwise.
      *
+     * @return the query hint text, if specified, null otherwise.
      * @attr ref android.R.styleable#SearchView_queryHint
      */
     public CharSequence getQueryHint() {
@@ -577,6 +659,18 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     }
 
     /**
+     * Sets the hint text to display in the query text field. This overrides any hint specified
+     * in the SearchableInfo.
+     *
+     * @param hint the hint text to display
+     * @attr ref android.R.styleable#SearchView_queryHint
+     */
+    public void setQueryHint(CharSequence hint) {
+        mQueryHint = hint;
+        updateQueryHint();
+    }
+
+    /**
      * Sets the default or resting state of the search field. If true, a single search icon is
      * shown by default and expands to show the text field and other buttons when pressed. Also,
      * if the default state is iconified, then it collapses to that state when the close button
@@ -585,7 +679,6 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
      * <p>The default value is true.</p>
      *
      * @param iconified whether the search field should be iconified by default
-     *
      * @attr ref android.R.styleable#SearchView_iconifiedByDefault
      */
     public void setIconifiedByDefault(boolean iconified) {
@@ -597,30 +690,12 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
 
     /**
      * Returns the default iconified state of the search field.
-     * @return
      *
+     * @return
      * @attr ref android.R.styleable#SearchView_iconifiedByDefault
      */
     public boolean isIconfiedByDefault() {
         return mIconifiedByDefault;
-    }
-
-    /**
-     * Iconifies or expands the SearchView. Any query text is cleared when iconified. This is
-     * a temporary state and does not override the default iconified state set by
-     * {@link #setIconifiedByDefault(boolean)}. If the default state is iconified, then
-     * a false here will only be valid until the user closes the field. And if the default
-     * state is expanded, then a true here will only clear the text field and not close it.
-     *
-     * @param iconify a true value will collapse the SearchView to an icon, while a false will
-     * expand it.
-     */
-    public void setIconified(boolean iconify) {
-        if (iconify) {
-            onCloseClicked();
-        } else {
-            onSearchClicked();
-        }
     }
 
     /**
@@ -634,16 +709,21 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     }
 
     /**
-     * Enables showing a submit button when the query is non-empty. In cases where the SearchView
-     * is being used to filter the contents of the current activity and doesn't launch a separate
-     * results activity, then the submit button should be disabled.
+     * Iconifies or expands the SearchView. Any query text is cleared when iconified. This is
+     * a temporary state and does not override the default iconified state set by
+     * {@link #setIconifiedByDefault(boolean)}. If the default state is iconified, then
+     * a false here will only be valid until the user closes the field. And if the default
+     * state is expanded, then a true here will only clear the text field and not close it.
      *
-     * @param enabled true to show a submit button for submitting queries, false if a submit
-     * button is not required.
+     * @param iconify a true value will collapse the SearchView to an icon, while a false will
+     *                expand it.
      */
-    public void setSubmitButtonEnabled(boolean enabled) {
-        mSubmitButtonEnabled = enabled;
-        updateViewsVisibility(isIconified());
+    public void setIconified(boolean iconify) {
+        if (iconify) {
+            onCloseClicked();
+        } else {
+            onSearchClicked();
+        }
     }
 
     /**
@@ -656,6 +736,28 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     }
 
     /**
+     * Enables showing a submit button when the query is non-empty. In cases where the SearchView
+     * is being used to filter the contents of the current activity and doesn't launch a separate
+     * results activity, then the submit button should be disabled.
+     *
+     * @param enabled true to show a submit button for submitting queries, false if a submit
+     *                button is not required.
+     */
+    public void setSubmitButtonEnabled(boolean enabled) {
+        mSubmitButtonEnabled = enabled;
+        updateViewsVisibility(isIconified());
+    }
+
+    /**
+     * Returns whether query refinement is enabled for all items or only specific ones.
+     *
+     * @return true if enabled for all items, false otherwise.
+     */
+    public boolean isQueryRefinementEnabled() {
+        return mQueryRefinement;
+    }
+
+    /**
      * Specifies if a query refinement button should be displayed alongside each suggestion
      * or if it should depend on the flags set in the individual items retrieved from the
      * suggestions provider. Clicking on the query refinement button will replace the text
@@ -664,8 +766,7 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
      * and not when using a custom adapter.
      *
      * @param enable true if all items should have a query refinement button, false if only
-     * those items that have a query refinement flag set should have the button.
-     *
+     *               those items that have a query refinement flag set should have the button.
      * @see SearchManager#SUGGEST_COLUMN_FLAGS
      * @see SearchManager#FLAG_QUERY_REFINEMENT
      */
@@ -678,11 +779,12 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     }
 
     /**
-     * Returns whether query refinement is enabled for all items or only specific ones.
-     * @return true if enabled for all items, false otherwise.
+     * Returns the adapter used for suggestions, if any.
+     *
+     * @return the suggestions adapter
      */
-    public boolean isQueryRefinementEnabled() {
-        return mQueryRefinement;
+    public CursorAdapter getSuggestionsAdapter() {
+        return mSuggestionsAdapter;
     }
 
     /**
@@ -698,11 +800,14 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     }
 
     /**
-     * Returns the adapter used for suggestions, if any.
-     * @return the suggestions adapter
+     * Gets the specified maximum width in pixels, if set. Returns zero if
+     * no maximum width was specified.
+     *
+     * @return the maximum width of the view
+     * @attr ref android.R.styleable#SearchView_maxWidth
      */
-    public CursorAdapter getSuggestionsAdapter() {
-        return mSuggestionsAdapter;
+    public int getMaxWidth() {
+        return mMaxWidth;
     }
 
     /**
@@ -714,17 +819,6 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
         mMaxWidth = maxpixels;
 
         requestLayout();
-    }
-
-    /**
-     * Gets the specified maximum width in pixels, if set. Returns zero if
-     * no maximum width was specified.
-     * @return the maximum width of the view
-     *
-     * @attr ref android.R.styleable#SearchView_maxWidth
-     */
-    public int getMaxWidth() {
-        return mMaxWidth;
     }
 
     @Override
@@ -817,7 +911,7 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
         int visibility = GONE;
         if (isSubmitAreaEnabled()
                 && (mSubmitButton.getVisibility() == VISIBLE
-                        || mVoiceButton.getVisibility() == VISIBLE)) {
+                || mVoiceButton.getVisibility() == VISIBLE)) {
             visibility = VISIBLE;
         }
         mSubmitArea.setVisibility(visibility);
@@ -866,36 +960,19 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
 
     /**
      * Called by the SuggestionsAdapter
+     *
      * @hide
      */
     /* package */void onQueryRefine(CharSequence queryText) {
         setQuery(queryText);
     }
 
-    private final OnClickListener mOnClickListener = new OnClickListener() {
-
-        public void onClick(View v) {
-            if (v == mSearchButton) {
-                onSearchClicked();
-            } else if (v == mCloseButton) {
-                onCloseClicked();
-            } else if (v == mSubmitButton) {
-                onSubmitQuery();
-            } else if (v == mVoiceButton) {
-                onVoiceClicked();
-            } else if (v == mQueryTextView) {
-                forceSuggestionQuery();
-            }
-        }
-    };
-
     /**
      * Handles the key down event for dealing with action keys.
      *
      * @param keyCode This is the keycode of the typed key, and is the same value as
-     *        found in the KeyEvent parameter.
-     * @param event The complete event record for the typed key
-     *
+     *                found in the KeyEvent parameter.
+     * @param event   The complete event record for the typed key
      * @return true if the event was handled here, or false if not.
      */
     @Override
@@ -915,56 +992,6 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
 
         return super.onKeyDown(keyCode, event);
     }
-
-    /**
-     * React to the user typing "enter" or other hardwired keys while typing in
-     * the search box. This handles these special keys while the edit box has
-     * focus.
-     */
-    View.OnKeyListener mTextKeyListener = new View.OnKeyListener() {
-        public boolean onKey(View v, int keyCode, KeyEvent event) {
-            // guard against possible race conditions
-            if (mSearchable == null) {
-                return false;
-            }
-
-            if (DBG) {
-                Log.d(LOG_TAG, "mTextListener.onKey(" + keyCode + "," + event + "), selection: "
-                        + mQueryTextView.getListSelection());
-            }
-
-            // If a suggestion is selected, handle enter, search key, and action keys
-            // as presses on the selected suggestion
-            if (mQueryTextView.isPopupShowing()
-                    && mQueryTextView.getListSelection() != ListView.INVALID_POSITION) {
-                return onSuggestionsKey(v, keyCode, event);
-            }
-
-            // If there is text in the query box, handle enter, and action keys
-            // The search key is handled by the dialog's onKeyDown().
-            if (!mQueryTextView.isEmpty() && KeyEventCompat.hasNoModifiers(event)) {
-                if (event.getAction() == KeyEvent.ACTION_UP) {
-                    if (keyCode == KeyEvent.KEYCODE_ENTER) {
-                        v.cancelLongPress();
-
-                        // Launch as a regular search.
-                        launchQuerySearch(KeyEvent.KEYCODE_UNKNOWN, null, mQueryTextView.getText()
-                                .toString());
-                        return true;
-                    }
-                }
-                if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                    // TODO SearchableInfo.ActionKeyInfo actionKey = mSearchable.findActionKey(keyCode);
-                    // TODO if ((actionKey != null) && (actionKey.getQueryActionMsg() != null)) {
-                    // TODO     launchQuerySearch(keyCode, actionKey.getQueryActionMsg(), mQueryTextView
-                    // TODO             .getText().toString());
-                    // TODO     return true;
-                    // TODO }
-                }
-            }
-            return false;
-        }
-    };
 
     /**
      * React to the user typing while in the suggestions list. First, check for
@@ -1038,11 +1065,10 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
      * not provided by the specific row/column, also check for a single
      * definition (for the action key).
      *
-     * @param c The cursor providing suggestions
+     * @param c         The cursor providing suggestions
      * @param actionKey The actionkey record being examined
-     *
      * @return Returns a string, or null if no action key message for this
-     *         suggestion
+     * suggestion
      */
     // TODO private static String getActionKeyMessage(Cursor c, SearchableInfo.ActionKeyInfo actionKey) {
     // TODO     String result = null;
@@ -1059,7 +1085,6 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     // TODO     }
     // TODO     return result;
     // TODO }
-
     private int getSearchIconId() {
         TypedValue outValue = new TypedValue();
         getContext().getTheme().resolveAttribute(R.attr.searchViewSearchIcon,
@@ -1134,15 +1159,16 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
             mQueryTextView.setAdapter(mSuggestionsAdapter);
             ((SuggestionsAdapter) mSuggestionsAdapter).setQueryRefinement(
                     mQueryRefinement ? SuggestionsAdapter.REFINE_ALL
-                    : SuggestionsAdapter.REFINE_BY_ENTRY);
+                            : SuggestionsAdapter.REFINE_BY_ENTRY);
         }
     }
 
     /**
      * Update the visibility of the voice button.  There are actually two voice search modes,
      * either of which will activate the button.
+     *
      * @param empty whether the search query text field is empty. If it is, then the other
-     * criteria apply to make the voice button visible.
+     *              criteria apply to make the voice button visible.
      */
     private void updateVoiceButton(boolean empty) {
         int visibility = GONE;
@@ -1152,17 +1178,6 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
         }
         mVoiceButton.setVisibility(visibility);
     }
-
-    private final OnEditorActionListener mOnEditorActionListener = new OnEditorActionListener() {
-
-        /**
-         * Called when the input method default action key is pressed.
-         */
-        public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-            onSubmitQuery();
-            return true;
-        }
-    };
 
     private void onTextChanged(CharSequence newText) {
         CharSequence text = mQueryTextView.getText();
@@ -1339,36 +1354,6 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
         return false;
     }
 
-    private final OnItemClickListener mOnItemClickListener = new OnItemClickListener() {
-
-        /**
-         * Implements OnItemClickListener
-         */
-        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-            if (DBG) Log.d(LOG_TAG, "onItemClick() position " + position);
-            onItemClicked(position, KeyEvent.KEYCODE_UNKNOWN, null);
-        }
-    };
-
-    private final OnItemSelectedListener mOnItemSelectedListener = new OnItemSelectedListener() {
-
-        /**
-         * Implements OnItemSelectedListener
-         */
-        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-            if (DBG) Log.d(LOG_TAG, "onItemSelected() position " + position);
-            SearchView.this.onItemSelected(position);
-        }
-
-        /**
-         * Implements OnItemSelectedListener
-         */
-        public void onNothingSelected(AdapterView<?> parent) {
-            if (DBG)
-                Log.d(LOG_TAG, "onNothingSelected()");
-        }
-    };
-
     /**
      * Query rewriting.
      */
@@ -1398,11 +1383,11 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     /**
      * Launches an intent based on a suggestion.
      *
-     * @param position The index of the suggestion to create the intent from.
+     * @param position  The index of the suggestion to create the intent from.
      * @param actionKey The key code of the action key that was pressed,
-     *        or {@link KeyEvent#KEYCODE_UNKNOWN} if none.
+     *                  or {@link KeyEvent#KEYCODE_UNKNOWN} if none.
      * @param actionMsg The message for the action key that was pressed,
-     *        or <code>null</code> if none.
+     *                  or <code>null</code> if none.
      * @return true if a successful launch, false if could not (e.g. bad position).
      */
     private boolean launchSuggestion(int position, int actionKey, String actionMsg) {
@@ -1435,15 +1420,6 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
         }
     }
 
-    /**
-     * Sets the text in the query box, without updating the suggestions.
-     */
-    private void setQuery(CharSequence query) {
-        setText(mQueryTextView, query, true);
-        // Move the cursor to the end
-        mQueryTextView.setSelection(TextUtils.isEmpty(query) ? 0 : query.length());
-    }
-
     private void launchQuerySearch(int actionKey, String actionMsg, String query) {
         String action = Intent.ACTION_SEARCH;
         Intent intent = createIntent(action, null, null, query, actionKey, actionMsg);
@@ -1453,18 +1429,18 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
     /**
      * Constructs an intent from the given information and the search dialog state.
      *
-     * @param action Intent action.
-     * @param data Intent data, or <code>null</code>.
+     * @param action    Intent action.
+     * @param data      Intent data, or <code>null</code>.
      * @param extraData Data for {@link SearchManager#EXTRA_DATA_KEY} or <code>null</code>.
-     * @param query Intent query, or <code>null</code>.
+     * @param query     Intent query, or <code>null</code>.
      * @param actionKey The key code of the action key that was pressed,
-     *        or {@link KeyEvent#KEYCODE_UNKNOWN} if none.
+     *                  or {@link KeyEvent#KEYCODE_UNKNOWN} if none.
      * @param actionMsg The message for the action key that was pressed,
-     *        or <code>null</code> if none.
+     *                  or <code>null</code> if none.
      * @return The intent.
      */
     private Intent createIntent(String action, Uri data, String extraData, String query,
-                                                            int actionKey, String actionMsg) {
+                                int actionKey, String actionMsg) {
         // Now build the Intent
         Intent intent = new Intent(action);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -1571,11 +1547,11 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
      * and/or falling back to the XML for defaults;  It also creates REST style Uri data when
      * the suggestion includes a data id.
      *
-     * @param c The suggestions cursor, moved to the row of the user's selection
+     * @param c         The suggestions cursor, moved to the row of the user's selection
      * @param actionKey The key code of the action key that was pressed,
-     *        or {@link KeyEvent#KEYCODE_UNKNOWN} if none.
+     *                  or {@link KeyEvent#KEYCODE_UNKNOWN} if none.
      * @param actionMsg The message for the action key that was pressed,
-     *        or <code>null</code> if none.
+     *                  or <code>null</code> if none.
      * @return An intent for the suggestion at the cursor's position.
      */
     private Intent createIntentFromSuggestion(Cursor c, int actionKey, String actionMsg) {
@@ -1608,15 +1584,15 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
             String extraData = getColumnString(c, SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA);
 
             return createIntent(action, dataUri, extraData, query, actionKey, actionMsg);
-        } catch (RuntimeException e ) {
+        } catch (RuntimeException e) {
             int rowNum;
             try {                       // be really paranoid now
                 rowNum = c.getPosition();
-            } catch (RuntimeException e2 ) {
+            } catch (RuntimeException e2) {
                 rowNum = -1;
             }
             Log.w(LOG_TAG, "Search suggestions cursor at row " + rowNum +
-                            " returned exception.", e);
+                    " returned exception.", e);
             return null;
         }
     }
@@ -1634,29 +1610,74 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
         }
     }
 
-    static boolean isLandscapeMode(Context context) {
-        return context.getResources().getConfiguration().orientation
-                == Configuration.ORIENTATION_LANDSCAPE;
+    /**
+     * Callbacks for changes to the query text.
+     */
+    public interface OnQueryTextListener {
+
+        /**
+         * Called when the user submits the query. This could be due to a key press on the
+         * keyboard or due to pressing a submit button.
+         * The listener can override the standard behavior by returning true
+         * to indicate that it has handled the submit request. Otherwise return false to
+         * let the SearchView handle the submission by launching any associated intent.
+         *
+         * @param query the query text that is to be submitted
+         * @return true if the query has been handled by the listener, false to let the
+         * SearchView perform the default action.
+         */
+        boolean onQueryTextSubmit(String query);
+
+        /**
+         * Called when the query text is changed by the user.
+         *
+         * @param newText the new content of the query text field.
+         * @return false if the SearchView should perform the default action of showing any
+         * suggestions if available, true if the action was handled by the listener.
+         */
+        boolean onQueryTextChange(String newText);
+    }
+
+    public interface OnCloseListener {
+
+        /**
+         * The user is attempting to close the SearchView.
+         *
+         * @return true if the listener wants to override the default behavior of clearing the
+         * text field and dismissing it, false otherwise.
+         */
+        boolean onClose();
     }
 
     /**
-     * Callback to watch the text field for empty/non-empty
+     * Callback interface for selection events on suggestions. These callbacks
+     * are only relevant when a SearchableInfo has been specified by {@link #setSearchableInfo}.
      */
-    private TextWatcher mTextWatcher = new TextWatcher() {
+    public interface OnSuggestionListener {
 
-        public void beforeTextChanged(CharSequence s, int start, int before, int after) { }
+        /**
+         * Called when a suggestion was selected by navigating to it.
+         *
+         * @param position the absolute position in the list of suggestions.
+         * @return true if the listener handles the event and wants to override the default
+         * behavior of possibly rewriting the query based on the selected item, false otherwise.
+         */
+        boolean onSuggestionSelect(int position);
 
-        public void onTextChanged(CharSequence s, int start,
-                                                            int before, int after) {
-            SearchView.this.onTextChanged(s);
-        }
-
-        public void afterTextChanged(Editable s) {
-        }
-    };
+        /**
+         * Called when a suggestion was clicked.
+         *
+         * @param position the absolute position of the clicked item in the list of suggestions.
+         * @return true if the listener handles the event and wants to override the default
+         * behavior of launching any intent or submitting a search query specified on that item.
+         * Return false otherwise.
+         */
+        boolean onSuggestionClick(int position);
+    }
 
     /**
      * Local subclass for AutoCompleteTextView.
+     *
      * @hide
      */
     public static class SearchAutoComplete extends AutoCompleteTextView {
@@ -1775,37 +1796,5 @@ public class SearchView extends LinearLayout implements CollapsibleActionView {
             return super.onKeyPreIme(keyCode, event);
         }
 
-    }
-
-    private static void ensureImeVisible(AutoCompleteTextView view, boolean visible) {
-        try {
-            Method method = AutoCompleteTextView.class.getMethod("ensureImeVisible", boolean.class);
-            method.setAccessible(true);
-            method.invoke(view, visible);
-        } catch (Exception e) {
-            //Oh well...
-        }
-    }
-
-    private static void showSoftInputUnchecked(View view, InputMethodManager imm, int flags) {
-        try {
-            Method method = imm.getClass().getMethod("showSoftInputUnchecked", int.class, ResultReceiver.class);
-            method.setAccessible(true);
-            method.invoke(imm, flags, null);
-        } catch (Exception e) {
-            //Fallback to public API which hopefully does mostly the same thing
-            imm.showSoftInput(view, flags);
-        }
-    }
-
-    private static void setText(AutoCompleteTextView view, CharSequence text, boolean filter) {
-        try {
-            Method method = AutoCompleteTextView.class.getMethod("setText", CharSequence.class, boolean.class);
-            method.setAccessible(true);
-            method.invoke(view, text, filter);
-        } catch (Exception e) {
-            //Fallback to public API which hopefully does mostly the same thing
-            view.setText(text);
-        }
     }
 }

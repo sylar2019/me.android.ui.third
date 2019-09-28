@@ -16,8 +16,6 @@
 
 package com.actionbarsherlock.internal.view.menu;
 
-import java.util.HashSet;
-import java.util.Set;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Rect;
@@ -39,6 +37,9 @@ import com.actionbarsherlock.internal.view.View_OnAttachStateChangeListener;
 import com.actionbarsherlock.internal.widget.CapitalizingButton;
 import com.actionbarsherlock.internal.widget.IcsToast;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import static com.actionbarsherlock.internal.ResourcesCompat.getResources_getBoolean;
 
 /**
@@ -49,17 +50,15 @@ public class ActionMenuItemView extends LinearLayout
         ActionMenuView.ActionMenuChildView, View_HasStateListenerSupport {
     //UNUSED private static final String TAG = "ActionMenuItemView";
 
+    private final Set<View_OnAttachStateChangeListener> mListeners = new HashSet<View_OnAttachStateChangeListener>();
     private MenuItemImpl mItemData;
     private CharSequence mTitle;
     private MenuBuilder.ItemInvoker mItemInvoker;
-
     private ImageButton mImageButton;
     private CapitalizingButton mTextButton;
     private boolean mAllowTextWithIcon;
     private boolean mExpandedFormat;
     private int mMinWidth;
-
-    private final Set<View_OnAttachStateChangeListener> mListeners = new HashSet<View_OnAttachStateChangeListener>();
 
     public ActionMenuItemView(Context context) {
         this(context, null);

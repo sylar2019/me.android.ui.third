@@ -40,7 +40,7 @@ allprojects {
     apply plugin: "idea"
     apply plugin: 'maven'
 
-    group "me.android.third"
+    group rootProject.name
     version "1.0.0"
 
     repositories {
@@ -71,13 +71,20 @@ subprojects {
     }
 }
 
-configure(isJavaProject()) {
+/** ******************************************************************************************/
+
+configure(isLib()) {
     apply from: gradlesPath + "android-lib.gradle"
 
     dependencies {
         api "com.android.support:support-v4:" + rootProject.ext.androidSupportV4
     }
+
 }
+configure(isApp()) {
+    apply from: gradlesPath + "android-app.gradle"
+}
+
 
 
 

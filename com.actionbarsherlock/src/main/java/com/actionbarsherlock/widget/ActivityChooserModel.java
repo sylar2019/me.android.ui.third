@@ -25,6 +25,7 @@ import android.os.Handler;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Xml;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
@@ -95,179 +96,104 @@ import java.util.concurrent.Executors;
 class ActivityChooserModel extends DataSetObservable {
 
     /**
-     * Client that utilizes an {@link ActivityChooserModel}.
-     */
-    public interface ActivityChooserModelClient {
-
-        /**
-         * Sets the {@link ActivityChooserModel}.
-         *
-         * @param dataModel The model.
-         */
-        public void setActivityChooserModel(ActivityChooserModel dataModel);
-    }
-
-    /**
-     * Defines a sorter that is responsible for sorting the activities
-     * based on the provided historical choices and an intent.
-     */
-    public interface ActivitySorter {
-
-        /**
-         * Sorts the <code>activities</code> in descending order of relevance
-         * based on previous history and an intent.
-         *
-         * @param intent The {@link Intent}.
-         * @param activities Activities to be sorted.
-         * @param historicalRecords Historical records.
-         */
-        // This cannot be done by a simple comparator since an Activity weight
-        // is computed from history. Note that Activity implements Comparable.
-        public void sort(Intent intent, List<ActivityResolveInfo> activities,
-                List<HistoricalRecord> historicalRecords);
-    }
-
-    /**
-     * Listener for choosing an activity.
-     */
-    public interface OnChooseActivityListener {
-
-        /**
-         * Called when an activity has been chosen. The client can decide whether
-         * an activity can be chosen and if so the caller of
-         * {@link ActivityChooserModel#chooseActivity(int)} will receive and {@link Intent}
-         * for launching it.
-         * <p>
-         * <strong>Note:</strong> Modifying the intent is not permitted and
-         *     any changes to the latter will be ignored.
-         * </p>
-         *
-         * @param host The listener's host model.
-         * @param intent The intent for launching the chosen activity.
-         * @return Whether the intent is handled and should not be delivered to clients.
-         *
-         * @see ActivityChooserModel#chooseActivity(int)
-         */
-        public boolean onChooseActivity(ActivityChooserModel host, Intent intent);
-    }
-
-    /**
-     * Flag for selecting debug mode.
-     */
-    private static final boolean DEBUG = false;
-
-    /**
-     * Tag used for logging.
-     */
-    private static final String LOG_TAG = ActivityChooserModel.class.getSimpleName();
-
-    /**
-     * The root tag in the history file.
-     */
-    private static final String TAG_HISTORICAL_RECORDS = "historical-records";
-
-    /**
-     * The tag for a record in the history file.
-     */
-    private static final String TAG_HISTORICAL_RECORD = "historical-record";
-
-    /**
-     * Attribute for the activity.
-     */
-    private static final String ATTRIBUTE_ACTIVITY = "activity";
-
-    /**
-     * Attribute for the choice time.
-     */
-    private static final String ATTRIBUTE_TIME = "time";
-
-    /**
-     * Attribute for the choice weight.
-     */
-    private static final String ATTRIBUTE_WEIGHT = "weight";
-
-    /**
      * The default name of the choice history file.
      */
     public static final String DEFAULT_HISTORY_FILE_NAME =
-        "activity_choser_model_history.xml";
-
+            "activity_choser_model_history.xml";
     /**
      * The default maximal length of the choice history.
      */
     public static final int DEFAULT_HISTORY_MAX_LENGTH = 50;
-
+    /**
+     * Flag for selecting debug mode.
+     */
+    private static final boolean DEBUG = false;
+    /**
+     * Tag used for logging.
+     */
+    private static final String LOG_TAG = ActivityChooserModel.class.getSimpleName();
+    /**
+     * The root tag in the history file.
+     */
+    private static final String TAG_HISTORICAL_RECORDS = "historical-records";
+    /**
+     * The tag for a record in the history file.
+     */
+    private static final String TAG_HISTORICAL_RECORD = "historical-record";
+    /**
+     * Attribute for the activity.
+     */
+    private static final String ATTRIBUTE_ACTIVITY = "activity";
+    /**
+     * Attribute for the choice time.
+     */
+    private static final String ATTRIBUTE_TIME = "time";
+    /**
+     * Attribute for the choice weight.
+     */
+    private static final String ATTRIBUTE_WEIGHT = "weight";
     /**
      * The amount with which to inflate a chosen activity when set as default.
      */
     private static final int DEFAULT_ACTIVITY_INFLATION = 5;
-
     /**
      * Default weight for a choice record.
      */
     private static final float DEFAULT_HISTORICAL_RECORD_WEIGHT = 1.0f;
-
     /**
      * The extension of the history file.
      */
     private static final String HISTORY_FILE_EXTENSION = ".xml";
-
     /**
      * An invalid item index.
      */
     private static final int INVALID_INDEX = -1;
-
     /**
      * Lock to guard the model registry.
      */
     private static final Object sRegistryLock = new Object();
-
     /**
      * This the registry for data models.
      */
     private static final Map<String, ActivityChooserModel> sDataModelRegistry =
-        new HashMap<String, ActivityChooserModel>();
-
+            new HashMap<String, ActivityChooserModel>();
+    private static final Executor SERIAL_EXECUTOR = Executors.newSingleThreadExecutor();
     /**
      * Lock for synchronizing on this instance.
      */
     private final Object mInstanceLock = new Object();
-
     /**
      * List of activities that can handle the current intent.
      */
     private final List<ActivityResolveInfo> mActivites = new ArrayList<ActivityResolveInfo>();
-
     /**
      * List with historical choice records.
      */
     private final List<HistoricalRecord> mHistoricalRecords = new ArrayList<HistoricalRecord>();
-
     /**
      * Context for accessing resources.
      */
     private final Context mContext;
-
     /**
      * The name of the history file that backs this model.
      */
     private final String mHistoryFileName;
-
+    /**
+     * Hander for scheduling work on client tread.
+     */
+    private final Handler mHandler = new Handler();
     /**
      * The intent for which a activity is being chosen.
      */
     private Intent mIntent;
-
     /**
      * The sorter for ordering activities based on intent and past choices.
      */
     private ActivitySorter mActivitySorter = new DefaultSorter();
-
     /**
      * The maximal length of the choice history.
      */
     private int mHistoryMaxSize = DEFAULT_HISTORY_MAX_LENGTH;
-
     /**
      * Flag whether choice history can be read. In general many clients can
      * share the same data model and {@link #readHistoricalData()} may be called
@@ -277,7 +203,6 @@ class ActivityChooserModel extends DataSetObservable {
      * of the share records.
      */
     private boolean mCanReadHistoricalData = true;
-
     /**
      * Flag whether the choice history was read. This is used to enforce that
      * before calling {@link #persistHistoricalData()} a call to
@@ -288,7 +213,6 @@ class ActivityChooserModel extends DataSetObservable {
      * purge old records that are outside of the sliding window of past choices.
      */
     private boolean mReadShareHistoryCalled = false;
-
     /**
      * Flag whether the choice records have changed. In general many clients can
      * share the same data model and {@link #persistHistoricalData()} may be called
@@ -296,16 +220,26 @@ class ActivityChooserModel extends DataSetObservable {
      * that choice history will be persisted only if it has changed.
      */
     private boolean mHistoricalRecordsChanged = true;
-
-    /**
-     * Hander for scheduling work on client tread.
-     */
-    private final Handler mHandler = new Handler();
-
     /**
      * Policy for controlling how the model handles chosen activities.
      */
     private OnChooseActivityListener mActivityChoserModelPolicy;
+
+    /**
+     * Creates a new instance.
+     *
+     * @param context         Context for loading resources.
+     * @param historyFileName The history XML file.
+     */
+    private ActivityChooserModel(Context context, String historyFileName) {
+        mContext = context.getApplicationContext();
+        if (!TextUtils.isEmpty(historyFileName)
+                && !historyFileName.endsWith(HISTORY_FILE_EXTENSION)) {
+            mHistoryFileName = historyFileName + HISTORY_FILE_EXTENSION;
+        } else {
+            mHistoryFileName = historyFileName;
+        }
+    }
 
     /**
      * Gets the data model backed by the contents of the provided file with historical data.
@@ -324,11 +258,10 @@ class ActivityChooserModel extends DataSetObservable {
      * For example, sharing is different from importing.</strong>
      * </p>
      *
-     * @param context Context for loading resources.
+     * @param context         Context for loading resources.
      * @param historyFileName File name with choice history, <code>null</code>
-     *        if the model should not be backed by a file. In this case the activities
-     *        will be ordered only by data from the current session.
-     *
+     *                        if the model should not be backed by a file. In this case the activities
+     *                        will be ordered only by data from the current session.
      * @return The model.
      */
     public static ActivityChooserModel get(Context context, String historyFileName) {
@@ -344,18 +277,13 @@ class ActivityChooserModel extends DataSetObservable {
     }
 
     /**
-     * Creates a new instance.
+     * Gets the intent for which a activity is being chosen.
      *
-     * @param context Context for loading resources.
-     * @param historyFileName The history XML file.
+     * @return The intent.
      */
-    private ActivityChooserModel(Context context, String historyFileName) {
-        mContext = context.getApplicationContext();
-        if (!TextUtils.isEmpty(historyFileName)
-                && !historyFileName.endsWith(HISTORY_FILE_EXTENSION)) {
-            mHistoryFileName = historyFileName + HISTORY_FILE_EXTENSION;
-        } else {
-            mHistoryFileName = historyFileName;
+    public Intent getIntent() {
+        synchronized (mInstanceLock) {
+            return mIntent;
         }
     }
 
@@ -379,21 +307,9 @@ class ActivityChooserModel extends DataSetObservable {
     }
 
     /**
-     * Gets the intent for which a activity is being chosen.
-     *
-     * @return The intent.
-     */
-    public Intent getIntent() {
-        synchronized (mInstanceLock) {
-            return mIntent;
-        }
-    }
-
-    /**
      * Gets the number of activities that can handle the intent.
      *
      * @return The activity count.
-     *
      * @see #setIntent(Intent)
      */
     public int getActivityCount() {
@@ -406,7 +322,6 @@ class ActivityChooserModel extends DataSetObservable {
      * Gets an activity at a given index.
      *
      * @return The activity.
-     *
      * @see ActivityResolveInfo
      * @see #setIntent(Intent)
      */
@@ -420,7 +335,6 @@ class ActivityChooserModel extends DataSetObservable {
      * Gets the index of a the given activity.
      *
      * @param activity The activity index.
-     *
      * @return The index if found, -1 otherwise.
      */
     public int getActivityIndex(ResolveInfo activity) {
@@ -447,8 +361,7 @@ class ActivityChooserModel extends DataSetObservable {
      * </p>
      *
      * @return An {@link Intent} for launching the activity or null if the
-     *         policy has consumed the intent.
-     *
+     * policy has consumed the intent.
      * @see HistoricalRecord
      * @see OnChooseActivityListener
      */
@@ -494,7 +407,6 @@ class ActivityChooserModel extends DataSetObservable {
      * handle the intent.
      *
      * @return The default activity, <code>null</code> id not activities.
-     *
      * @see #getActivity(int)
      */
     public ResolveInfo getDefaultActivity() {
@@ -524,7 +436,7 @@ class ActivityChooserModel extends DataSetObservable {
         if (oldDefaultActivity != null) {
             // Add a record with weight enough to boost the chosen at the top.
             weight = oldDefaultActivity.weight - newDefaultActivity.weight
-                + DEFAULT_ACTIVITY_INFLATION;
+                    + DEFAULT_ACTIVITY_INFLATION;
         } else {
             weight = DEFAULT_HISTORICAL_RECORD_WEIGHT;
         }
@@ -543,9 +455,9 @@ class ActivityChooserModel extends DataSetObservable {
      * to {@link #persistHistoricalData()} has been made has no effect.
      * <p>
      * <strong>Note:</strong> Historical data is read asynchronously and
-     *       as soon as the reading is completed any registered
-     *       {@link DataSetObserver}s will be notified. Also no historical
-     *       data is read until this method is invoked.
+     * as soon as the reading is completed any registered
+     * {@link DataSetObserver}s will be notified. Also no historical
+     * data is read until this method is invoked.
      * <p>
      */
     private void readHistoricalData() {
@@ -556,12 +468,11 @@ class ActivityChooserModel extends DataSetObservable {
             mCanReadHistoricalData = false;
             mReadShareHistoryCalled = true;
             if (!TextUtils.isEmpty(mHistoryFileName)) {
-                /*AsyncTask.*/SERIAL_EXECUTOR.execute(new HistoryLoader());
+                /*AsyncTask.*/
+                SERIAL_EXECUTOR.execute(new HistoryLoader());
             }
         }
     }
-
-    private static final Executor SERIAL_EXECUTOR = Executors.newSingleThreadExecutor();
 
     /**
      * Persists the history data to the backing file if the latter
@@ -570,7 +481,7 @@ class ActivityChooserModel extends DataSetObservable {
      * activity has not effect.
      *
      * @throws IllegalStateException If this method is called before a call to
-     *         {@link #readHistoricalData()}.
+     *                               {@link #readHistoricalData()}.
      */
     private void persistHistoricalData() {
         synchronized (mInstanceLock) {
@@ -583,7 +494,8 @@ class ActivityChooserModel extends DataSetObservable {
             mHistoricalRecordsChanged = false;
             mCanReadHistoricalData = true;
             if (!TextUtils.isEmpty(mHistoryFileName)) {
-                /*AsyncTask.*/SERIAL_EXECUTOR.execute(new HistoryPersister());
+                /*AsyncTask.*/
+                SERIAL_EXECUTOR.execute(new HistoryPersister());
             }
         }
     }
@@ -592,7 +504,6 @@ class ActivityChooserModel extends DataSetObservable {
      * Sets the sorter for ordering activities based on historical data and an intent.
      *
      * @param activitySorter The sorter.
-     *
      * @see ActivitySorter
      */
     public void setActivitySorter(ActivitySorter activitySorter) {
@@ -622,14 +533,25 @@ class ActivityChooserModel extends DataSetObservable {
     }
 
     /**
+     * Gets the history max size.
+     *
+     * @return The history max size.
+     */
+    public int getHistoryMaxSize() {
+        synchronized (mInstanceLock) {
+            return mHistoryMaxSize;
+        }
+    }
+
+    /**
      * Sets the maximal size of the historical data. Defaults to
      * {@link #DEFAULT_HISTORY_MAX_LENGTH}
      * <p>
-     *   <strong>Note:</strong> Setting this property will immediately
-     *   enforce the specified max history size by dropping enough old
-     *   historical records to enforce the desired size. Thus, any
-     *   records that exceed the history size will be discarded and
-     *   irreversibly lost.
+     * <strong>Note:</strong> Setting this property will immediately
+     * enforce the specified max history size by dropping enough old
+     * historical records to enforce the desired size. Thus, any
+     * records that exceed the history size will be discarded and
+     * irreversibly lost.
      * </p>
      *
      * @param historyMaxSize The max history size.
@@ -642,17 +564,6 @@ class ActivityChooserModel extends DataSetObservable {
             mHistoryMaxSize = historyMaxSize;
             pruneExcessiveHistoricalRecordsLocked();
             sortActivities();
-        }
-    }
-
-    /**
-     * Gets the history max size.
-     *
-     * @return The history max size.
-     */
-    public int getHistoryMaxSize() {
-        synchronized (mInstanceLock) {
-            return mHistoryMaxSize;
         }
     }
 
@@ -711,7 +622,7 @@ class ActivityChooserModel extends DataSetObservable {
         mActivites.clear();
         if (mIntent != null) {
             List<ResolveInfo> resolveInfos =
-                mContext.getPackageManager().queryIntentActivities(mIntent, 0);
+                    mContext.getPackageManager().queryIntentActivities(mIntent, 0);
             final int resolveInfoCount = resolveInfos.size();
             for (int i = 0; i < resolveInfoCount; i++) {
                 ResolveInfo resolveInfo = resolveInfos.get(i);
@@ -721,6 +632,62 @@ class ActivityChooserModel extends DataSetObservable {
         } else {
             notifyChanged();
         }
+    }
+
+    /**
+     * Client that utilizes an {@link ActivityChooserModel}.
+     */
+    public interface ActivityChooserModelClient {
+
+        /**
+         * Sets the {@link ActivityChooserModel}.
+         *
+         * @param dataModel The model.
+         */
+        public void setActivityChooserModel(ActivityChooserModel dataModel);
+    }
+
+    /**
+     * Defines a sorter that is responsible for sorting the activities
+     * based on the provided historical choices and an intent.
+     */
+    public interface ActivitySorter {
+
+        /**
+         * Sorts the <code>activities</code> in descending order of relevance
+         * based on previous history and an intent.
+         *
+         * @param intent            The {@link Intent}.
+         * @param activities        Activities to be sorted.
+         * @param historicalRecords Historical records.
+         */
+        // This cannot be done by a simple comparator since an Activity weight
+        // is computed from history. Note that Activity implements Comparable.
+        public void sort(Intent intent, List<ActivityResolveInfo> activities,
+                         List<HistoricalRecord> historicalRecords);
+    }
+
+    /**
+     * Listener for choosing an activity.
+     */
+    public interface OnChooseActivityListener {
+
+        /**
+         * Called when an activity has been chosen. The client can decide whether
+         * an activity can be chosen and if so the caller of
+         * {@link ActivityChooserModel#chooseActivity(int)} will receive and {@link Intent}
+         * for launching it.
+         * <p>
+         * <strong>Note:</strong> Modifying the intent is not permitted and
+         * any changes to the latter will be ignored.
+         * </p>
+         *
+         * @param host   The listener's host model.
+         * @param intent The intent for launching the chosen activity.
+         * @return Whether the intent is handled and should not be delivered to clients.
+         * @see ActivityChooserModel#chooseActivity(int)
+         */
+        public boolean onChooseActivity(ActivityChooserModel host, Intent intent);
     }
 
     /**
@@ -747,8 +714,8 @@ class ActivityChooserModel extends DataSetObservable {
          * Creates a new instance.
          *
          * @param activityName The activity component name flattened to string.
-         * @param time The time the activity was chosen.
-         * @param weight The weight of the record.
+         * @param time         The time the activity was chosen.
+         * @param weight       The weight of the record.
          */
         public HistoricalRecord(String activityName, long time, float weight) {
             this(ComponentName.unflattenFromString(activityName), time, weight);
@@ -758,8 +725,8 @@ class ActivityChooserModel extends DataSetObservable {
          * Creates a new instance.
          *
          * @param activityName The activity name.
-         * @param time The time the activity was chosen.
-         * @param weight The weight of the record.
+         * @param time         The time the activity was chosen.
+         * @param weight       The weight of the record.
          */
         public HistoricalRecord(ComponentName activityName, long time, float weight) {
             this.activity = activityName;
@@ -865,7 +832,7 @@ class ActivityChooserModel extends DataSetObservable {
         }
 
         public int compareTo(ActivityResolveInfo another) {
-             return  Float.floatToIntBits(another.weight) - Float.floatToIntBits(weight);
+            return Float.floatToIntBits(another.weight) - Float.floatToIntBits(weight);
         }
 
         @Override
@@ -886,12 +853,12 @@ class ActivityChooserModel extends DataSetObservable {
         private static final float WEIGHT_DECAY_COEFFICIENT = 0.95f;
 
         private final Map<String, ActivityResolveInfo> mPackageNameToActivityMap =
-            new HashMap<String, ActivityResolveInfo>();
+                new HashMap<String, ActivityResolveInfo>();
 
         public void sort(Intent intent, List<ActivityResolveInfo> activities,
-                List<HistoricalRecord> historicalRecords) {
+                         List<HistoricalRecord> historicalRecords) {
             Map<String, ActivityResolveInfo> packageNameToActivityMap =
-                mPackageNameToActivityMap;
+                    mPackageNameToActivityMap;
             packageNameToActivityMap.clear();
 
             final int activityCount = activities.size();
@@ -929,7 +896,7 @@ class ActivityChooserModel extends DataSetObservable {
      */
     private final class HistoryLoader implements Runnable {
 
-       public void run() {
+        public void run() {
             FileInputStream fis = null;
             try {
                 fis = mContext.openFileInput(mHistoryFileName);
@@ -970,9 +937,9 @@ class ActivityChooserModel extends DataSetObservable {
 
                     String activity = parser.getAttributeValue(null, ATTRIBUTE_ACTIVITY);
                     final long time =
-                        Long.parseLong(parser.getAttributeValue(null, ATTRIBUTE_TIME));
+                            Long.parseLong(parser.getAttributeValue(null, ATTRIBUTE_TIME));
                     final float weight =
-                        Float.parseFloat(parser.getAttributeValue(null, ATTRIBUTE_WEIGHT));
+                            Float.parseFloat(parser.getAttributeValue(null, ATTRIBUTE_WEIGHT));
 
                     HistoricalRecord readRecord = new HistoricalRecord(activity, time,
                             weight);
@@ -989,7 +956,7 @@ class ActivityChooserModel extends DataSetObservable {
 
                 synchronized (mInstanceLock) {
                     Set<HistoricalRecord> uniqueShareRecords =
-                        new LinkedHashSet<HistoricalRecord>(readRecords);
+                            new LinkedHashSet<HistoricalRecord>(readRecords);
 
                     // Make sure no duplicates. Example: Read a file with
                     // one record, add one record, persist the two records,

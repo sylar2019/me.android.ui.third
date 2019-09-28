@@ -11,6 +11,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.internal.ActionBarSherlockCompat;
 import com.actionbarsherlock.internal.ActionBarSherlockNative;
@@ -18,6 +19,7 @@ import com.actionbarsherlock.view.ActionMode;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -40,10 +42,16 @@ import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
  * @author Jake Wharton <jakewharton@gmail.com>
  */
 public abstract class ActionBarSherlock {
-    protected static final String TAG = "ActionBarSherlock";
     public static final boolean DEBUG = false;
-
-    private static final Class<?>[] CONSTRUCTOR_ARGS = new Class[] { Activity.class, int.class };
+    /**
+     * If set, the logic in these classes will assume that an {@link Activity}
+     * is dispatching all of the required events to the class. This flag should
+     * only be used internally or if you are creating your own base activity
+     * modeled after one of the included types (e.g., {@code SherlockActivity}).
+     */
+    public static final int FLAG_DELEGATE = 1;
+    protected static final String TAG = "ActionBarSherlock";
+    private static final Class<?>[] CONSTRUCTOR_ARGS = new Class[]{Activity.class, int.class};
     private static final HashMap<Implementation, Class<? extends ActionBarSherlock>> IMPLEMENTATIONS =
             new HashMap<Implementation, Class<? extends ActionBarSherlock>>();
 
@@ -53,82 +61,45 @@ public abstract class ActionBarSherlock {
         registerImplementation(ActionBarSherlockNative.class);
     }
 
-
     /**
-     * <p>Denotes an implementation of ActionBarSherlock which provides an
-     * action bar-enhanced experience.</p>
+     * Activity which is displaying the action bar. Also used for context.
      */
-    @Target(ElementType.TYPE)
-    @Retention(RetentionPolicy.RUNTIME)
-    public @interface Implementation {
-        static final int DEFAULT_API = -1;
-        static final int DEFAULT_DPI = -1;
-
-        int api() default DEFAULT_API;
-        int dpi() default DEFAULT_DPI;
-    }
-
-
-    /** Activity interface for menu creation callback. */
-    public interface OnCreatePanelMenuListener {
-        public boolean onCreatePanelMenu(int featureId, Menu menu);
-    }
-    /** Activity interface for menu creation callback. */
-    public interface OnCreateOptionsMenuListener {
-        public boolean onCreateOptionsMenu(Menu menu);
-    }
-    /** Activity interface for menu item selection callback. */
-    public interface OnMenuItemSelectedListener {
-        public boolean onMenuItemSelected(int featureId, MenuItem item);
-    }
-    /** Activity interface for menu item selection callback. */
-    public interface OnOptionsItemSelectedListener {
-        public boolean onOptionsItemSelected(MenuItem item);
-    }
-    /** Activity interface for menu preparation callback. */
-    public interface OnPreparePanelListener {
-        public boolean onPreparePanel(int featureId, View view, Menu menu);
-    }
-    /** Activity interface for menu preparation callback. */
-    public interface OnPrepareOptionsMenuListener {
-        public boolean onPrepareOptionsMenu(Menu menu);
-    }
-    /** Activity interface for action mode finished callback. */
-    public interface OnActionModeFinishedListener {
-        public void onActionModeFinished(ActionMode mode);
-    }
-    /** Activity interface for action mode started callback. */
-    public interface OnActionModeStartedListener {
-        public void onActionModeStarted(ActionMode mode);
-    }
-
-
+    protected final Activity mActivity;
     /**
-     * If set, the logic in these classes will assume that an {@link Activity}
-     * is dispatching all of the required events to the class. This flag should
-     * only be used internally or if you are creating your own base activity
-     * modeled after one of the included types (e.g., {@code SherlockActivity}).
+     * Whether delegating actions for the activity or managing ourselves.
      */
-    public static final int FLAG_DELEGATE = 1;
+    protected final boolean mIsDelegate;
+    /**
+     * Reference to our custom menu inflater which supports action items.
+     */
+    protected MenuInflater mMenuInflater;
 
+    protected ActionBarSherlock(Activity activity, int flags) {
+        if (DEBUG) Log.d(TAG, "[<ctor>] activity: " + activity + ", flags: " + flags);
+
+        mActivity = activity;
+        mIsDelegate = (flags & FLAG_DELEGATE) != 0;
+    }
 
     /**
      * Register an ActionBarSherlock implementation.
      *
      * @param implementationClass Target implementation class which extends
-     * {@link ActionBarSherlock}. This class must also be annotated with
-     * {@link Implementation}.
+     *                            {@link ActionBarSherlock}. This class must also be annotated with
+     *                            {@link Implementation}.
      */
     public static void registerImplementation(Class<? extends ActionBarSherlock> implementationClass) {
         if (!implementationClass.isAnnotationPresent(Implementation.class)) {
             throw new IllegalArgumentException("Class " + implementationClass.getSimpleName() + " is not annotated with @Implementation");
         } else if (IMPLEMENTATIONS.containsValue(implementationClass)) {
-            if (DEBUG) Log.w(TAG, "Class " + implementationClass.getSimpleName() + " already registered");
+            if (DEBUG)
+                Log.w(TAG, "Class " + implementationClass.getSimpleName() + " already registered");
             return;
         }
 
         Implementation impl = implementationClass.getAnnotation(Implementation.class);
-        if (DEBUG) Log.i(TAG, "Registering " + implementationClass.getSimpleName() + " with qualifier " + impl);
+        if (DEBUG)
+            Log.i(TAG, "Registering " + implementationClass.getSimpleName() + " with qualifier " + impl);
         IMPLEMENTATIONS.put(impl, implementationClass);
     }
 
@@ -162,7 +133,7 @@ public abstract class ActionBarSherlock {
      * not exist.
      *
      * @param activity Owning activity.
-     * @param flags Option flags to control behavior.
+     * @param flags    Option flags to control behavior.
      * @return Instance to interact with the action bar.
      */
     public static ActionBarSherlock wrap(Activity activity, int flags) {
@@ -242,36 +213,12 @@ public abstract class ActionBarSherlock {
         }
     }
 
-
-    /** Activity which is displaying the action bar. Also used for context. */
-    protected final Activity mActivity;
-    /** Whether delegating actions for the activity or managing ourselves. */
-    protected final boolean mIsDelegate;
-
-    /** Reference to our custom menu inflater which supports action items. */
-    protected MenuInflater mMenuInflater;
-
-
-
-    protected ActionBarSherlock(Activity activity, int flags) {
-        if (DEBUG) Log.d(TAG, "[<ctor>] activity: " + activity + ", flags: " + flags);
-
-        mActivity = activity;
-        mIsDelegate = (flags & FLAG_DELEGATE) != 0;
-    }
-
-
     /**
      * Get the current action bar instance.
      *
      * @return Action bar instance.
      */
     public abstract ActionBar getActionBar();
-
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Lifecycle and interaction callbacks when delegating
-    ///////////////////////////////////////////////////////////////////////////
 
     /**
      * Notify action bar of a configuration change event. Should be dispatched
@@ -287,7 +234,8 @@ public abstract class ActionBarSherlock {
      *
      * @param newConfig The new device configuration.
      */
-    public void dispatchConfigurationChanged(Configuration newConfig) {}
+    public void dispatchConfigurationChanged(Configuration newConfig) {
+    }
 
     /**
      * Notify the action bar that the activity has finished its resuming. This
@@ -301,7 +249,8 @@ public abstract class ActionBarSherlock {
      * }
      * </pre></blockquote>
      */
-    public void dispatchPostResume() {}
+    public void dispatchPostResume() {
+    }
 
     /**
      * Notify the action bar that the activity is pausing. This should be
@@ -315,21 +264,23 @@ public abstract class ActionBarSherlock {
      * }
      * </pre></blockquote>
      */
-    public void dispatchPause() {}
+    public void dispatchPause() {
+    }
 
     /**
      * Notify the action bar that the activity is stopping. This should be
      * called before the superclass implementation.
      *
      * <blockquote><p>
-     * @Override
-     * protected void onStop() {
-     *     mSherlock.dispatchStop();
-     *     super.onStop();
+     *
+     * @Override protected void onStop() {
+     * mSherlock.dispatchStop();
+     * super.onStop();
      * }
      * </p></blockquote>
      */
-    public void dispatchStop() {}
+    public void dispatchStop() {
+    }
 
     /**
      * Indicate that the menu should be recreated by calling
@@ -343,15 +294,14 @@ public abstract class ActionBarSherlock {
      * call the superclass method only if this method returns {@code false}.
      *
      * <blockquote><p>
-     * @Override
-     * public void openOptionsMenu() {
-     *     if (!mSherlock.dispatchOpenOptionsMenu()) {
-     *         super.openOptionsMenu();
-     *     }
-     * }
-     * </p></blockquote>
      *
      * @return {@code true} if the opening of the menu was handled internally.
+     * @Override public void openOptionsMenu() {
+     * if (!mSherlock.dispatchOpenOptionsMenu()) {
+     * super.openOptionsMenu();
+     * }
+     * }
+     * </p></blockquote>
      */
     public boolean dispatchOpenOptionsMenu() {
         return false;
@@ -395,7 +345,8 @@ public abstract class ActionBarSherlock {
      *                           {@link Activity#}onSaveInstanceState(Bundle)}.
      *                           <strong>Note: Otherwise it is null.</strong>
      */
-    public void dispatchPostCreate(Bundle savedInstanceState) {}
+    public void dispatchPostCreate(Bundle savedInstanceState) {
+    }
 
     /**
      * Notify the action bar that the title has changed and the action bar
@@ -413,7 +364,13 @@ public abstract class ActionBarSherlock {
      * @param title New activity title.
      * @param color New activity color.
      */
-    public void dispatchTitleChanged(CharSequence title, int color) {}
+    public void dispatchTitleChanged(CharSequence title, int color) {
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Lifecycle and interaction callbacks when delegating
+    ///////////////////////////////////////////////////////////////////////////
 
     /**
      * Notify the action bar the user has created a key event. This is used to
@@ -456,14 +413,13 @@ public abstract class ActionBarSherlock {
      * not call the superclass implementation.
      *
      * <blockquote><p>
-     * @Override
-     * public final boolean onPrepareOptionsMenu(android.view.Menu menu) {
-     *     return mSherlock.dispatchPrepareOptionsMenu(menu);
-     * }
-     * </p></blockquote>
      *
      * @param menu Activity native menu.
      * @return {@code true} if menu display should proceed.
+     * @Override public final boolean onPrepareOptionsMenu(android.view.Menu menu) {
+     * return mSherlock.dispatchPrepareOptionsMenu(menu);
+     * }
+     * </p></blockquote>
      */
     public abstract boolean dispatchPrepareOptionsMenu(android.view.Menu menu);
 
@@ -472,14 +428,13 @@ public abstract class ActionBarSherlock {
      * The implementation should return the result of this method call.
      *
      * <blockquote><p>
-     * @Override
-     * public final boolean onOptionsItemSelected(android.view.MenuItem item) {
-     *     return mSherlock.dispatchOptionsItemSelected(item);
-     * }
-     * </p></blockquote>
      *
      * @param item Options menu item.
      * @return @{code true} if the selection was handled.
+     * @Override public final boolean onOptionsItemSelected(android.view.MenuItem item) {
+     * return mSherlock.dispatchOptionsItemSelected(item);
+     * }
+     * </p></blockquote>
      */
     public abstract boolean dispatchOptionsItemSelected(android.view.MenuItem item);
 
@@ -490,18 +445,17 @@ public abstract class ActionBarSherlock {
      * method.
      *
      * <blockquote><p>
-     * @Override
-     * public final boolean onMenuOpened(int featureId, android.view.Menu menu) {
-     *     if (mSherlock.dispatchMenuOpened(featureId, menu)) {
-     *         return true;
-     *     }
-     *     return super.onMenuOpened(featureId, menu);
-     * }
-     * </p></blockquote>
      *
      * @param featureId Window feature which triggered the event.
-     * @param menu Activity native menu.
+     * @param menu      Activity native menu.
      * @return {@code true} if the event was handled by this method.
+     * @Override public final boolean onMenuOpened(int featureId, android.view.Menu menu) {
+     * if (mSherlock.dispatchMenuOpened(featureId, menu)) {
+     * return true;
+     * }
+     * return super.onMenuOpened(featureId, menu);
+     * }
+     * </p></blockquote>
      */
     public boolean dispatchMenuOpened(int featureId, android.view.Menu menu) {
         return false;
@@ -512,39 +466,38 @@ public abstract class ActionBarSherlock {
      * method should be called before the superclass implementation.
      *
      * <blockquote><p>
-     * @Override
-     * public void onPanelClosed(int featureId, android.view.Menu menu) {
-     *     mSherlock.dispatchPanelClosed(featureId, menu);
-     *     super.onPanelClosed(featureId, menu);
-     * }
-     * </p></blockquote>
      *
      * @param featureId
      * @param menu
+     * @Override public void onPanelClosed(int featureId, android.view.Menu menu) {
+     * mSherlock.dispatchPanelClosed(featureId, menu);
+     * super.onPanelClosed(featureId, menu);
+     * }
+     * </p></blockquote>
      */
-    public void dispatchPanelClosed(int featureId, android.view.Menu menu) {}
+    public void dispatchPanelClosed(int featureId, android.view.Menu menu) {
+    }
 
     /**
      * Notify the action bar that the activity has been destroyed. This method
      * should be called before the superclass implementation.
      *
      * <blockquote><p>
-     * @Override
-     * public void onDestroy() {
-     *     mSherlock.dispatchDestroy();
-     *     super.onDestroy();
+     *
+     * @Override public void onDestroy() {
+     * mSherlock.dispatchDestroy();
+     * super.onDestroy();
      * }
      * </p></blockquote>
      */
-    public void dispatchDestroy() {}
+    public void dispatchDestroy() {
+    }
 
-    public void dispatchSaveInstanceState(Bundle outState) {}
+    public void dispatchSaveInstanceState(Bundle outState) {
+    }
 
-    public void dispatchRestoreInstanceState(Bundle savedInstanceState) {}
-
-    ///////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////
-
+    public void dispatchRestoreInstanceState(Bundle savedInstanceState) {
+    }
 
     /**
      * Internal method to trigger the menu creation process.
@@ -556,10 +509,10 @@ public abstract class ActionBarSherlock {
 
         boolean result = true;
         if (mActivity instanceof OnCreatePanelMenuListener) {
-            OnCreatePanelMenuListener listener = (OnCreatePanelMenuListener)mActivity;
+            OnCreatePanelMenuListener listener = (OnCreatePanelMenuListener) mActivity;
             result = listener.onCreatePanelMenu(Window.FEATURE_OPTIONS_PANEL, menu);
         } else if (mActivity instanceof OnCreateOptionsMenuListener) {
-            OnCreateOptionsMenuListener listener = (OnCreateOptionsMenuListener)mActivity;
+            OnCreateOptionsMenuListener listener = (OnCreateOptionsMenuListener) mActivity;
             result = listener.onCreateOptionsMenu(menu);
         }
 
@@ -577,10 +530,10 @@ public abstract class ActionBarSherlock {
 
         boolean result = true;
         if (mActivity instanceof OnPreparePanelListener) {
-            OnPreparePanelListener listener = (OnPreparePanelListener)mActivity;
+            OnPreparePanelListener listener = (OnPreparePanelListener) mActivity;
             result = listener.onPreparePanel(Window.FEATURE_OPTIONS_PANEL, null, menu);
         } else if (mActivity instanceof OnPrepareOptionsMenuListener) {
-            OnPrepareOptionsMenuListener listener = (OnPrepareOptionsMenuListener)mActivity;
+            OnPrepareOptionsMenuListener listener = (OnPrepareOptionsMenuListener) mActivity;
             result = listener.onPrepareOptionsMenu(menu);
         }
 
@@ -600,21 +553,16 @@ public abstract class ActionBarSherlock {
 
         boolean result = false;
         if (mActivity instanceof OnMenuItemSelectedListener) {
-            OnMenuItemSelectedListener listener = (OnMenuItemSelectedListener)mActivity;
+            OnMenuItemSelectedListener listener = (OnMenuItemSelectedListener) mActivity;
             result = listener.onMenuItemSelected(Window.FEATURE_OPTIONS_PANEL, item);
         } else if (mActivity instanceof OnOptionsItemSelectedListener) {
-            OnOptionsItemSelectedListener listener = (OnOptionsItemSelectedListener)mActivity;
+            OnOptionsItemSelectedListener listener = (OnOptionsItemSelectedListener) mActivity;
             result = listener.onOptionsItemSelected(item);
         }
 
         if (DEBUG) Log.d(TAG, "[callbackOptionsItemSelected] returning " + result);
         return result;
     }
-
-
-    ///////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////
-
 
     /**
      * Query for the availability of a certain feature.
@@ -649,8 +597,8 @@ public abstract class ActionBarSherlock {
      * bits filtered by mask will be modified.
      *
      * @param uiOptions Flags specifying extra options for this window.
-     * @param mask Flags specifying which options should be modified. Others
-     *             will remain unchanged.
+     * @param mask      Flags specifying which options should be modified. Others
+     *                  will remain unchanged.
      */
     public abstract void setUiOptions(int uiOptions, int mask);
 
@@ -672,10 +620,13 @@ public abstract class ActionBarSherlock {
         setContentView(view, new ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT));
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+
     /**
      * Set the content of the activity inside the action bar.
      *
-     * @param view The desired content to display.
+     * @param view   The desired content to display.
      * @param params Layout parameters to apply to the view.
      */
     public abstract void setContentView(View view, ViewGroup.LayoutParams params);
@@ -685,7 +636,7 @@ public abstract class ActionBarSherlock {
      * to add an additional content view to the screen. Added after any
      * existing ones on the screen -- existing views are NOT removed.
      *
-     * @param view The desired content to display.
+     * @param view   The desired content to display.
      * @param params Layout parameters for the view.
      */
     public abstract void addContentView(View view, ViewGroup.LayoutParams params);
@@ -694,6 +645,10 @@ public abstract class ActionBarSherlock {
      * Change the title associated with this activity.
      */
     public abstract void setTitle(CharSequence title);
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
 
     /**
      * Change the title associated with this activity.
@@ -742,8 +697,8 @@ public abstract class ActionBarSherlock {
      * via {@link #requestWindowFeature(int)}.
      *
      * @param progress The progress for the progress bar. Valid ranges are from
-     *            0 to 10000 (both inclusive). If 10000 is given, the progress
-     *            bar will be completely filled and will fade out.
+     *                 0 to 10000 (both inclusive). If 10000 is given, the progress
+     *                 bar will be completely filled and will fade out.
      */
     public abstract void setProgress(int progress);
 
@@ -758,7 +713,7 @@ public abstract class ActionBarSherlock {
      * via {@link #requestWindowFeature(int)}.
      *
      * @param secondaryProgress The secondary progress for the progress bar. Valid ranges are from
-     *            0 to 10000 (both inclusive).
+     *                          0 to 10000 (both inclusive).
      */
     public abstract void setSecondaryProgress(int secondaryProgress);
 
@@ -796,5 +751,77 @@ public abstract class ActionBarSherlock {
     /**
      * Ensure that the action bar is attached.
      */
-    public void ensureActionBar() {}
+    public void ensureActionBar() {
+    }
+
+    /**
+     * <p>Denotes an implementation of ActionBarSherlock which provides an
+     * action bar-enhanced experience.</p>
+     */
+    @Target(ElementType.TYPE)
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Implementation {
+        static final int DEFAULT_API = -1;
+        static final int DEFAULT_DPI = -1;
+
+        int api() default DEFAULT_API;
+
+        int dpi() default DEFAULT_DPI;
+    }
+
+    /**
+     * Activity interface for menu creation callback.
+     */
+    public interface OnCreatePanelMenuListener {
+        public boolean onCreatePanelMenu(int featureId, Menu menu);
+    }
+
+    /**
+     * Activity interface for menu creation callback.
+     */
+    public interface OnCreateOptionsMenuListener {
+        public boolean onCreateOptionsMenu(Menu menu);
+    }
+
+    /**
+     * Activity interface for menu item selection callback.
+     */
+    public interface OnMenuItemSelectedListener {
+        public boolean onMenuItemSelected(int featureId, MenuItem item);
+    }
+
+    /**
+     * Activity interface for menu item selection callback.
+     */
+    public interface OnOptionsItemSelectedListener {
+        public boolean onOptionsItemSelected(MenuItem item);
+    }
+
+    /**
+     * Activity interface for menu preparation callback.
+     */
+    public interface OnPreparePanelListener {
+        public boolean onPreparePanel(int featureId, View view, Menu menu);
+    }
+
+    /**
+     * Activity interface for menu preparation callback.
+     */
+    public interface OnPrepareOptionsMenuListener {
+        public boolean onPrepareOptionsMenu(Menu menu);
+    }
+
+    /**
+     * Activity interface for action mode finished callback.
+     */
+    public interface OnActionModeFinishedListener {
+        public void onActionModeFinished(ActionMode mode);
+    }
+
+    /**
+     * Activity interface for action mode started callback.
+     */
+    public interface OnActionModeStartedListener {
+        public void onActionModeStarted(ActionMode mode);
+    }
 }

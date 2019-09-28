@@ -26,6 +26,7 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+
 import com.actionbarsherlock.R;
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.internal.nineoldandroids.widget.NineFrameLayout;
@@ -33,6 +34,7 @@ import com.actionbarsherlock.internal.nineoldandroids.widget.NineFrameLayout;
 /**
  * This class acts as a container for the action bar view and action mode context views.
  * It applies special styles as needed to help handle animated transitions between them.
+ *
  * @hide
  */
 public class ActionBarContainer extends NineFrameLayout {
@@ -133,6 +135,10 @@ public class ActionBarContainer extends NineFrameLayout {
         return true;
     }
 
+    public View getTabContainer() {
+        return mTabContainer;
+    }
+
     public void setTabContainer(ScrollingTabContainerView tabView) {
         if (mTabContainer != null) {
             removeView(mTabContainer);
@@ -145,10 +151,6 @@ public class ActionBarContainer extends NineFrameLayout {
             lp.height = LayoutParams.WRAP_CONTENT;
             tabView.setAllowCollapse(false);
         }
-    }
-
-    public View getTabContainer() {
-        return mTabContainer;
     }
 
     @Override
