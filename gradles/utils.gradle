@@ -1,3 +1,4 @@
+
 ext {
     isLib = this.&isLib
     isApp = this.&isApp
@@ -6,7 +7,6 @@ ext {
     isProjectEndsWith = this.&isProjectEndsWith
     isProjectEquals = this.&isProjectEquals
 }
-
 
 def isLib() {
     Set result = isJavaProject()

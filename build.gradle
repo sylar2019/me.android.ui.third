@@ -32,7 +32,6 @@ buildscript {
 }
 
 /** ******************************************************************************************/
-/** ******************************************************************************************/
 
 allprojects {
     //公共插件
@@ -45,30 +44,21 @@ allprojects {
 
     repositories {
         mavenLocal()
+        flatDir {
+            dirs 'libs'
+        }
         maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
         maven { url 'http://maven.aliyun.com/nexus/content/repositories/jcenter' }
         maven { url 'http://maven.aliyun.com/nexus/content/repositories/google' }
-        maven { url 'http://maven.aliyun.com/nexus/content/repositories/gradle-plugin' }
+        maven { url RELEASE_REPOSITORY_URL }
+        maven { url SNAPSHOT_REPOSITORY_URL }
+        maven { url THIRD_REPOSITORY_URL }
     }
 }
 
 subprojects {
     apply from: gradlesPath + "const.gradle"
     apply from: gradlesPath + "utils.gradle"
-
-    uploadArchives {
-        repositories {
-            mavenDeployer {
-                repository(url: "${nexus_third}") {
-                    authentication(userName: "${nexus_user}", password: "${nexus_pwd}")
-                }
-
-                pom.groupId = "${project.group}"
-                pom.version = "${project.version}"
-                pom.packaging = "aar"
-            }
-        }
-    }
 }
 
 /** ******************************************************************************************/
@@ -81,9 +71,7 @@ configure(isLib()) {
     }
 
 }
-configure(isApp()) {
-    apply from: gradlesPath + "android-app.gradle"
-}
+
 
 
 
