@@ -8,7 +8,6 @@ package com.komodo.tagin;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.view.Display;
 import android.view.Window;
 import android.view.WindowManager;
 
@@ -22,8 +21,6 @@ import java.util.List;
  */
 public class SampleTagCloud extends Activity {
 
-    private TagCloudView mTagCloudView;
-
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
@@ -33,9 +30,9 @@ public class SampleTagCloud extends Activity {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         //Step1: get screen resolution:
-        Display display = getWindowManager().getDefaultDisplay();
-        int width = display.getWidth();
-        int height = display.getHeight();
+//        Display display = getWindowManager().getDefaultDisplay();
+//        int width = display.getWidth();
+//        int height = display.getHeight();
 
         //Step2: create the required TagList:
         //notice: All tags must have unique text field
@@ -44,7 +41,7 @@ public class SampleTagCloud extends Activity {
 
         //Step3: create our TagCloudview and set it as the content of our MainActivity
 //		mTagCloudView = new TagCloudView(this, width, height, myTagList ); //passing current context
-        mTagCloudView = new TagCloudView(this); //passing current context
+        TagCloudView mTagCloudView = new TagCloudView(this); //passing current context
         setContentView(mTagCloudView);
         mTagCloudView.loadTags(myTagList);
 
@@ -79,7 +76,7 @@ public class SampleTagCloud extends Activity {
 
     private List<Tag> createTags() {
         //create the list of tags with popularity values and related url
-        List<Tag> tempList = new ArrayList<Tag>();
+        List<Tag> tempList = new ArrayList<>();
 
         tempList.add(new Tag("Google", 7, "http://www.google.com"));  //1,4,7,... assumed values for popularity
         tempList.add(new Tag("Yahoo", 3, "www.yahoo.com"));

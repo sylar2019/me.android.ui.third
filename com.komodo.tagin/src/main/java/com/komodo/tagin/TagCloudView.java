@@ -44,15 +44,17 @@ public class TagCloudView extends RelativeLayout {
     float dy = 100;
     Context mContext;
     TagCloud mTagCloud;
-//    boolean isAuto = true;
+    //    boolean isAuto = true;
 //    float oldX, oldY;
     List<TextView> mTextView;
     List<RelativeLayout.LayoutParams> mParams;
     OnTagClickCallback tagClickCallback;
+
     public TagCloudView(Context context) {
         super(context);
         init(context, null);
     }
+
     public TagCloudView(Context context, AttributeSet attrs) {
         super(context, attrs);
         init(context, attrs);
