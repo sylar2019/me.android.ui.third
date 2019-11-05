@@ -53,13 +53,13 @@ android {
 
 /** ******************************************************************************************/
 
-task androidSourcesJar(type: Jar) {
+task sourceJar(type: Jar) {
     classifier = 'sources'
     from android.sourceSets.main.java.sourceFiles
 }
 
 artifacts {
-    archives androidSourcesJar
+    archives sourceJar
 }
 
 publishing {
@@ -69,7 +69,7 @@ publishing {
             artifactId = "$project.name"
             version = "$project.version"
 
-            artifact androidSourcesJar
+            artifact sourceJar
         }
     }
 
