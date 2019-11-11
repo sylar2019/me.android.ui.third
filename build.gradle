@@ -1,9 +1,10 @@
-apply from: rootProject.rootDir.getAbsolutePath() + "/gradles/const.gradle"
 apply from: rootProject.rootDir.getAbsolutePath() + "/gradles/utils.gradle"
 
 /** ******************************************************************************************/
 
 ext {
+    gradlesPath = rootProject.rootDir.getAbsolutePath() + "/gradles/"
+
     androidBuildToolsVersion = "29.0.1"
     androidSupportV4 = "23.0.1"
     androidAppcompatV7 = "28.0.0"
@@ -27,18 +28,13 @@ buildscript {
     }
 
     dependencies {
-        classpath "com.android.tools.build:gradle:3.5.1"
+        classpath "com.android.tools.build:gradle:3.5.2"
     }
 }
 
 /** ******************************************************************************************/
 
 allprojects {
-    //公共插件
-    apply plugin: "eclipse"
-    apply plugin: "idea"
-    apply plugin: 'maven'
-
     group rootProject.name
     version "1.0.0"
 
@@ -47,28 +43,25 @@ allprojects {
         flatDir {
             dirs 'libs'
         }
-        maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
-        maven { url 'http://maven.aliyun.com/nexus/content/repositories/jcenter' }
-        maven { url 'http://maven.aliyun.com/nexus/content/repositories/google' }
+
+        maven { url "http://maven.aliyun.com/repository/central/" }
+        maven { url "http://maven.aliyun.com/repository/jcenter/" }
+        maven { url "http://maven.aliyun.com/repository/google/" }
     }
 }
 
 subprojects {
-    apply from: gradlesPath + "const.gradle"
-    apply from: gradlesPath + "utils.gradle"
 }
 
-/** ******************************************************************************************/
-
-configure(isLib()) {
-    apply from: gradlesPath + "android-lib.gradle"
+configure(getJavaProjects()) {
+    apply from: gradlesPath + "android.gradle"
 
     dependencies {
         api "com.android.support:support-v4:" + rootProject.ext.androidSupportV4
     }
-
 }
 
+/** ******************************************************************************************/
 
 
 
