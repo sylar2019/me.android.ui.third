@@ -1,6 +1,5 @@
 apply from: gradlesPath + 'const.gradle'
 apply from: gradlesPath + 'utils.gradle'
-apply plugin: 'maven-publish'
 apply plugin: 'maven'
 
 if (isAndroidApp()) {
@@ -67,40 +66,6 @@ android {
 }
 
 /** ******************************************************************************************/
-
-task androidSourcesJar(type: Jar) {
-    archiveClassifier.set('sources')
-    from android.sourceSets.main.java.sourceFiles
-}
-
-artifacts {
-    archives androidSourcesJar
-}
-
-/** ******************************************************************************************/
-
-publishing {
-    publications {
-        maven(MavenPublication) {
-            groupId = "$project.group"
-            artifactId = "$project.name"
-            version = "$project.version"
-
-            artifact androidSourcesJar
-            artifact("$buildDir/outputs/aar/${artifactId}-release.aar")
-        }
-    }
-
-    repositories {
-        maven {
-            url = version.endsWith('SNAPSHOT') ? SNAPSHOT_REPOSITORY_URL : RELEASE_REPOSITORY_URL
-            credentials {
-                username = NEXUS_USERNAME
-                password = NEXUS_PASSWORD
-            }
-        }
-    }
-}
 /** ******************************************************************************************/
 
 uploadArchives {
@@ -118,6 +83,12 @@ uploadArchives {
     }
 }
 
-uploadArchives.dependsOn(assemble)
+task androidSourcesJar(type: Jar) {
+    classifier = 'sources'
+    from android.sourceSets.main.java.sourceFiles
+}
+artifacts {
+    archives androidSourcesJar
+}
 
 /** ******************************************************************************************/

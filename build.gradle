@@ -21,14 +21,15 @@ ext {
 buildscript {
     repositories {
         mavenLocal()
-        maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
-        maven { url 'http://maven.aliyun.com/nexus/content/repositories/jcenter' }
-        maven { url 'http://maven.aliyun.com/nexus/content/repositories/google' }
-        maven { url 'http://maven.aliyun.com/nexus/content/repositories/gradle-plugin' }
+        maven { url "https://maven.aliyun.com/repository/public" }
+        maven { url "https://maven.aliyun.com/repository/jcenter/" }
+        maven { url "https://maven.aliyun.com/repository/google" }
+        maven { url "https://maven.aliyun.com/repository/gradle-plugin/" }
     }
 
     dependencies {
-        classpath "com.android.tools.build:gradle:3.5.2"
+        //3.5.2 编译有bug
+        classpath "com.android.tools.build:gradle:3.5.1"
     }
 }
 
@@ -44,13 +45,25 @@ allprojects {
             dirs 'libs'
         }
 
-        maven { url "http://maven.aliyun.com/repository/central/" }
-        maven { url "http://maven.aliyun.com/repository/jcenter/" }
-        maven { url "http://maven.aliyun.com/repository/google/" }
+        maven { url "https://maven.aliyun.com/repository/public" }
+        maven { url "https://maven.aliyun.com/repository/jcenter/" }
+        maven { url "https://maven.aliyun.com/repository/google" }
+        maven { url "https://mirrors.huaweicloud.com/repository/maven/" }
     }
+
+    configurations.all {
+        resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+    }
+
 }
 
+
 subprojects {
+    configurations.all {
+        resolutionStrategy {
+            force "com.android.support:support-v4:" + rootProject.ext.androidSupportV4
+        }
+    }
 }
 
 configure(getJavaProjects()) {
