@@ -21,6 +21,7 @@ ext {
 buildscript {
     repositories {
         mavenLocal()
+        maven { url "https://jcenter.bintray.com/" }
         maven { url "https://maven.aliyun.com/repository/public" }
         maven { url "https://maven.aliyun.com/repository/jcenter/" }
         maven { url "https://maven.aliyun.com/repository/google" }
@@ -36,7 +37,7 @@ buildscript {
 /** ******************************************************************************************/
 
 allprojects {
-    group rootProject.name
+    group 'com.github.sylar2019'
     version "1.0.0"
 
     repositories {
@@ -45,6 +46,7 @@ allprojects {
             dirs 'libs'
         }
 
+        maven { url "https://jcenter.bintray.com/" }
         maven { url "https://maven.aliyun.com/repository/public" }
         maven { url "https://maven.aliyun.com/repository/jcenter/" }
         maven { url "https://maven.aliyun.com/repository/google" }
