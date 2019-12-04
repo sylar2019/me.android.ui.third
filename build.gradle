@@ -37,7 +37,7 @@ buildscript {
 /** ******************************************************************************************/
 
 allprojects {
-    group 'com.github.sylar2019'
+    group rootProject.name
     version "1.0.0"
 
     repositories {
